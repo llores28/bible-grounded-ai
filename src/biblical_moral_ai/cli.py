@@ -66,7 +66,20 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("preflight", help="check whether full training is allowed")
     commands.add_parser("pilot-preflight", help="validate the 50/20/25 reviewed pilot")
     commands.add_parser(
+        "research-preflight",
+        help="validate candidates for unreviewed, release-prohibited local research",
+    )
+    commands.add_parser(
         "materialize-pilot", help="materialize training rows after pilot preflight passes"
+    )
+    research_materialize = commands.add_parser(
+        "materialize-research-pilot",
+        help="materialize validated candidates as unreviewed research-only rows",
+    )
+    research_materialize.add_argument(
+        "--acknowledge-unreviewed",
+        action="store_true",
+        help="acknowledge that outputs are not accepted and cannot be released",
     )
     commands.add_parser(
         "audit-pilot-drafts", help="verify the 50/20/25 draft queue against pinned evidence"
@@ -159,6 +172,11 @@ def build_parser() -> argparse.ArgumentParser:
     training.add_argument("config")
     training.add_argument("--execute", action="store_true", help="execute after all gates pass")
     training.add_argument("--smoke-test", action="store_true")
+    training.add_argument(
+        "--allow-unreviewed-research",
+        action="store_true",
+        help="allow only the explicit release-prohibited research configuration",
+    )
     return parser
 
 
@@ -185,6 +203,10 @@ def main(argv: list[str] | None = None) -> int:
         report = PilotWorkflow(root).readiness()
         _json(report.to_dict())
         return 0 if report.ready else 2
+    if args.command == "research-preflight":
+        report = PilotWorkflow(root).research_readiness()
+        _json(report.to_dict())
+        return 0 if report.ready else 2
     if args.command == "materialize-pilot":
         try:
             outputs = PilotWorkflow(root).materialize()
@@ -192,6 +214,16 @@ def main(argv: list[str] | None = None) -> int:
             _json({"status": "blocked", "reason": str(exc)})
             return 2
         _json({"status": "materialized", "outputs": outputs})
+        return 0
+    if args.command == "materialize-research-pilot":
+        try:
+            result = PilotWorkflow(root).materialize_unreviewed_research(
+                acknowledged_unreviewed=args.acknowledge_unreviewed
+            )
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
         return 0
     if args.command == "audit-pilot-drafts":
         report = PilotDraftWorkflow(root).audit()
@@ -378,7 +410,12 @@ def main(argv: list[str] | None = None) -> int:
             _json(inspect_training_request(args.config, root=root))
             return 0
         try:
-            manifest = run_training(args.config, root=root, smoke_test=args.smoke_test)
+            manifest = run_training(
+                args.config,
+                root=root,
+                smoke_test=args.smoke_test,
+                allow_unreviewed_research=args.allow_unreviewed_research,
+            )
         except TrainingBlockedError as exc:
             _json({"status": "blocked", "reason": str(exc)})
             return 2

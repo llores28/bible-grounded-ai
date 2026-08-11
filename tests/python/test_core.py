@@ -67,7 +67,12 @@ from biblical_moral_ai.schemas import (  # noqa: E402
     PipelineDecision,
     ReviewStatus,
 )
-from biblical_moral_ai.training import inspect_training_request  # noqa: E402
+from biblical_moral_ai.training import (  # noqa: E402
+    TrainingBlockedError,
+    _inspect_unreviewed_research_inputs,
+    inspect_training_request,
+    run_training,
+)
 
 KJV_QUOTE = "Thou shalt not bear false witness against thy neighbour."
 CORPUS = {"KJV_TEST": {"Exodus 20:16": KJV_QUOTE}}
@@ -1352,6 +1357,118 @@ class ReleaseAndProjectTests(unittest.TestCase):
         self.assertFalse(report.ready)
         failed = {check.name for check in report.checks if not check.passed}
         self.assertIn("pilot_reviewers", failed)
+
+    def test_research_preflight_bypasses_only_human_review_acceptance_checks(self) -> None:
+        report = PilotWorkflow(ROOT).research_readiness()
+        checks = {check.name: check for check in report.checks}
+        for name in PilotWorkflow.RESEARCH_ONLY_NONBLOCKING_CHECKS:
+            if name in checks:
+                self.assertFalse(checks[name].blocking)
+                self.assertIn("release remains prohibited", checks[name].detail)
+        self.assertTrue(checks["pilot_candidates"].blocking)
+        self.assertTrue(checks["pilot_candidates"].passed)
+        self.assertTrue(checks["research_unreviewed_scope"].blocking)
+        self.assertTrue(checks["research_unreviewed_scope"].passed)
+
+    def test_unreviewed_materialization_requires_explicit_acknowledgement(self) -> None:
+        with self.assertRaisesRegex(ValueError, "explicit acknowledgement"):
+            PilotWorkflow(ROOT).materialize_unreviewed_research()
+
+    def test_unreviewed_training_requires_explicit_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_path = root / "research.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "stage": "sft",
+                        "preflight_mode": "research_unreviewed",
+                        "gates": {
+                            "smoke_test_only": True,
+                            "release_prohibited": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                TrainingBlockedError, "--allow-unreviewed-research"
+            ):
+                run_training(config_path, root=root, smoke_test=True)
+
+    def test_unreviewed_training_config_is_release_prohibited(self) -> None:
+        config = json.loads(
+            (ROOT / "configs/training/apertus_8b_qlora_research_unreviewed.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(config["preflight_mode"], "research_unreviewed")
+        self.assertTrue(config["gates"]["smoke_test_only"])
+        self.assertTrue(config["gates"]["release_prohibited"])
+        self.assertIn("research_unreviewed_", config["dataset"]["train_path"])
+
+    def test_unreviewed_training_inputs_are_hash_bound_to_current_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidate_dir = root / "data/pilot/candidates"
+            candidate_dir.mkdir(parents=True)
+            source_meta = {}
+            for split in ("sft", "preferences", "evals"):
+                path = candidate_dir / f"{split}.jsonl"
+                path.write_text(json.dumps({"item_id": split}) + "\n", encoding="utf-8")
+                source_meta[split] = {
+                    "path": path.relative_to(root).as_posix(),
+                    "sha256": file_sha256(path),
+                    "count": 1,
+                }
+            row = {
+                "research_status": "unreviewed_candidate",
+                "release_eligible": False,
+                "human_review_bypassed": True,
+            }
+            outputs = {}
+            for split, filename in (
+                ("sft", "research_unreviewed_sft.jsonl"),
+                ("evals", "research_unreviewed_eval.jsonl"),
+            ):
+                path = root / "data/pilot" / filename
+                path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+                outputs[split] = {
+                    "path": path.relative_to(root).as_posix(),
+                    "sha256": file_sha256(path),
+                    "count": 1,
+                }
+            (root / "data/pilot/research_unreviewed_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "status": "unreviewed_research_only",
+                        "release_eligible": False,
+                        "accepted_counts_modified": False,
+                        "source_candidates": source_meta,
+                        "outputs": outputs,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = {
+                "dataset": {
+                    "train_path": "data/pilot/research_unreviewed_sft.jsonl",
+                    "eval_path": "data/pilot/research_unreviewed_eval.jsonl",
+                    "minimum_candidate_train_records": 1,
+                    "minimum_candidate_eval_records": 1,
+                },
+                "gates": {"release_prohibited": True, "smoke_test_only": True},
+            }
+            ready, _ = _inspect_unreviewed_research_inputs(root, config)
+            self.assertTrue(ready)
+
+            (root / "data/pilot/research_unreviewed_sft.jsonl").write_text(
+                json.dumps({**row, "tampered": True}) + "\n", encoding="utf-8"
+            )
+            ready, detail = _inspect_unreviewed_research_inputs(root, config)
+            self.assertFalse(ready)
+            self.assertIn("manifest output binding", detail)
 
     def test_curated_draft_queue_has_exact_50_20_25_and_sensitive_coverage(self) -> None:
         payload = json.loads(

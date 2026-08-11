@@ -46,10 +46,21 @@ def inspect_training_request(config_path: str | Path, *, root: str | Path = ".")
     )
     config = load_json(path)
     stage = str(config.get("stage", "all"))
+    preflight_mode = config.get("preflight_mode")
+    research_mode = preflight_mode == "research_unreviewed"
     readiness = (
-        PilotWorkflow(root_path).readiness()
-        if config.get("preflight_mode") == "pilot"
-        else ProjectPreflight(root_path).training_readiness(stage=stage)
+        PilotWorkflow(root_path).research_readiness()
+        if research_mode
+        else (
+            PilotWorkflow(root_path).readiness()
+            if preflight_mode == "pilot"
+            else ProjectPreflight(root_path).training_readiness(stage=stage)
+        )
+    )
+    research_inputs_ready, research_inputs_detail = (
+        _inspect_unreviewed_research_inputs(root_path, config)
+        if research_mode
+        else (True, "not an unreviewed research configuration")
     )
     cuda = inspect_cuda(
         minimum_vram_gib=float(config.get("gates", {}).get("minimum_gpu_vram_gib", 24))
@@ -58,8 +69,23 @@ def inspect_training_request(config_path: str | Path, *, root: str | Path = ".")
         "config_path": str(path),
         "config_sha256": _sha256(path),
         "stage": config.get("stage"),
-        "project_ready": readiness.ready,
-        "project_checks": readiness.to_dict()["checks"],
+        "project_ready": readiness.ready and research_inputs_ready,
+        "project_checks": list(readiness.to_dict()["checks"])
+        + (
+            [
+                {
+                    "name": "research_unreviewed_inputs",
+                    "passed": research_inputs_ready,
+                    "detail": research_inputs_detail,
+                    "blocking": True,
+                }
+            ]
+            if research_mode
+            else []
+        ),
+        "research_only": research_mode,
+        "human_review_bypassed": research_mode,
+        "release_eligible": False if research_mode else None,
         "cuda": cuda.to_dict(),
     }
 
@@ -69,6 +95,7 @@ def run_training(
     *,
     root: str | Path = ".",
     smoke_test: bool = False,
+    allow_unreviewed_research: bool = False,
 ) -> Path:
     root_path = Path(root).resolve()
     config_file = (
@@ -77,19 +104,35 @@ def run_training(
         else Path(config_path)
     )
     config = load_json(config_file)
-    pilot_mode = config.get("preflight_mode") == "pilot"
-    if pilot_mode and not smoke_test:
-        raise TrainingBlockedError("pilot configuration may only run with --smoke-test")
+    preflight_mode = config.get("preflight_mode")
+    pilot_mode = preflight_mode == "pilot"
+    research_mode = preflight_mode == "research_unreviewed"
+    if (pilot_mode or research_mode) and not smoke_test:
+        raise TrainingBlockedError("pilot configurations may only run with --smoke-test")
+    if research_mode and not allow_unreviewed_research:
+        raise TrainingBlockedError(
+            "unreviewed research requires --allow-unreviewed-research"
+        )
     readiness = (
-        PilotWorkflow(root_path).readiness()
-        if pilot_mode
-        else ProjectPreflight(root_path).training_readiness(
-            stage=str(config.get("stage", "all"))
+        PilotWorkflow(root_path).research_readiness()
+        if research_mode
+        else (
+            PilotWorkflow(root_path).readiness()
+            if pilot_mode
+            else ProjectPreflight(root_path).training_readiness(
+                stage=str(config.get("stage", "all"))
+            )
         )
     )
     if not readiness.ready:
         failed = [check.detail for check in readiness.checks if check.blocking and not check.passed]
         raise TrainingBlockedError("project preflight failed: " + " | ".join(failed))
+    if research_mode:
+        research_inputs_ready, research_inputs_detail = _inspect_unreviewed_research_inputs(
+            root_path, config
+        )
+        if not research_inputs_ready:
+            raise TrainingBlockedError(research_inputs_detail)
     cuda = inspect_cuda(
         minimum_vram_gib=float(config.get("gates", {}).get("minimum_gpu_vram_gib", 24))
     )
@@ -105,6 +148,14 @@ def run_training(
         "status": "started",
         "stage": config["stage"],
         "smoke_test": smoke_test,
+        "research_only": research_mode,
+        "human_review_bypassed": research_mode,
+        "release_eligible": False if research_mode else None,
+        "warning": (
+            "UNREVIEWED RESEARCH OUTPUT: not accepted data and not eligible for release"
+            if research_mode
+            else None
+        ),
         "git_commit": _git_commit(root_path),
         "config_path": str(config_file.relative_to(root_path)),
         "config_sha256": _sha256(config_file),
@@ -141,6 +192,81 @@ def run_training(
     manifest["finished_at"] = datetime.now(UTC).isoformat()
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest_path
+
+
+def _inspect_unreviewed_research_inputs(
+    root: Path, config: dict[str, Any]
+) -> tuple[bool, str]:
+    gates = config.get("gates", {})
+    if gates.get("release_prohibited") is not True:
+        return False, "unreviewed research config must set gates.release_prohibited=true"
+    if gates.get("smoke_test_only") is not True:
+        return False, "unreviewed research config must set gates.smoke_test_only=true"
+    dataset = config.get("dataset", {})
+    manifest_path = root / "data/pilot/research_unreviewed_manifest.json"
+    if not manifest_path.is_file():
+        return False, "materialize unreviewed research data first: missing research manifest"
+    try:
+        manifest = load_json(manifest_path)
+    except (OSError, ValueError) as exc:
+        return False, f"invalid unreviewed research manifest: {exc}"
+    if (
+        manifest.get("status") != "unreviewed_research_only"
+        or manifest.get("release_eligible") is not False
+        or manifest.get("accepted_counts_modified") is not False
+    ):
+        return False, "unreviewed research manifest safety labels are invalid"
+    for split in ("sft", "preferences", "evals"):
+        source_path = root / "data/pilot/candidates" / f"{split}.jsonl"
+        source_meta = manifest.get("source_candidates", {}).get(split, {})
+        if (
+            not source_path.is_file()
+            or source_meta.get("path")
+            != source_path.relative_to(root).as_posix()
+            or source_meta.get("sha256") != _sha256(source_path)
+        ):
+            return False, f"research manifest is stale for {split} candidates"
+    for field, split, minimum_field in (
+        ("train_path", "sft", "minimum_candidate_train_records"),
+        ("eval_path", "evals", "minimum_candidate_eval_records"),
+    ):
+        relative = Path(str(dataset.get(field, "")))
+        if not relative.as_posix().startswith("data/pilot/research_unreviewed_"):
+            return False, f"{field} must use a research_unreviewed pilot artifact"
+        path = (root / relative).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            return False, f"{field} escapes the project root"
+        if not path.is_file():
+            return False, f"materialize unreviewed research data first: missing {relative.as_posix()}"
+        try:
+            rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        except (OSError, json.JSONDecodeError) as exc:
+            return False, f"invalid unreviewed research data in {relative.as_posix()}: {exc}"
+        if not rows:
+            return False, f"unreviewed research data is empty: {relative.as_posix()}"
+        minimum = int(dataset.get(minimum_field, 0))
+        if minimum < 1 or len(rows) < minimum:
+            return False, (
+                f"unreviewed research data count is below {minimum_field}: "
+                f"{len(rows)}/{minimum}"
+            )
+        if any(
+            row.get("research_status") != "unreviewed_candidate"
+            or row.get("release_eligible") is not False
+            or row.get("human_review_bypassed") is not True
+            for row in rows
+        ):
+            return False, f"unreviewed research labels are missing: {relative.as_posix()}"
+        output_meta = manifest.get("outputs", {}).get(split, {})
+        if (
+            output_meta.get("path") != relative.as_posix()
+            or output_meta.get("sha256") != _sha256(path)
+            or output_meta.get("count") != len(rows)
+        ):
+            return False, f"research manifest output binding is invalid: {relative.as_posix()}"
+    return True, "unreviewed research inputs are labeled and release-ineligible"
 
 
 def _load_training_dependencies() -> dict[str, Any]:

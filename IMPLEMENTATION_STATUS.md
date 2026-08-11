@@ -22,6 +22,7 @@ Snapshot date: 2026-08-11
 - Curated `draft_only` queue with exactly 50/20/25 unique scenarios, all resolved to approved evidence, plus authoring packets, candidate validation, blinded packet-bound reviews, revision/adjudication rules, finalization, and hash-bound CPU receipts.
 - Deterministic AI-authored candidate starting points for all 95 scenarios pass CPU policy and citation checks but count as zero until real independent human review.
 - Reviewer readiness auditing now enforces explicit sensitive-category qualifications, and deterministic per-reviewer ZIP exports keep blinded first-pass packets separate.
+- An explicit unreviewed local-research path can materialize validated candidates and run only a two-step smoke test while preserving source, citation, content, deception, safety, CUDA, and release gates. Every row and run manifest is marked human-review-bypassed and release-ineligible; accepted counts are untouched.
 
 ## Deliberately not claimed
 
@@ -34,5 +35,5 @@ Snapshot date: 2026-08-11
 - No QLoRA or DPO run has executed.
 - No trained adapter, benchmark result, scholar approval, or public model release exists.
 
-`python -m biblical_moral_ai validate` verifies implementation integrity. `build-evidence --fetch` reproduces the approved evidence database. `pilot-preflight` and production `preflight` remain blocked until their respective reviewed data, reviewer, corpus, and digest requirements are real. These counters must never be advanced with generated or unreviewed placeholders.
+`python -m biblical_moral_ai validate` verifies implementation integrity. `build-evidence --fetch` reproduces the approved evidence database. Reviewed `pilot-preflight` and production `preflight` remain blocked until their respective reviewed data, reviewer, corpus, and digest requirements are real. `research-preflight` may bypass only the human-review acceptance checks for labeled local smoke testing; it cannot advance counters or authorize release.
 

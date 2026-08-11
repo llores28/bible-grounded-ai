@@ -87,6 +87,18 @@ python -m biblical_moral_ai train configs/training/apertus_8b_qlora_pilot.json -
 
 The pilot config rejects execution without `--smoke-test`. Passing it never satisfies the separate 3,000/1,000 production-data gate.
 
+### Temporary unreviewed local research
+
+Human-review acceptance checks may be bypassed only through the dedicated research mode. This does not alter `pilot-preflight`, accepted manifests, reviewer requirements, or release evaluation.
+
+```powershell
+python -m biblical_moral_ai research-preflight
+python -m biblical_moral_ai materialize-research-pilot --acknowledge-unreviewed
+python -m biblical_moral_ai train configs/training/apertus_8b_qlora_research_unreviewed.json --execute --smoke-test --allow-unreviewed-research
+```
+
+The research preflight still requires approved and digest-matched Scripture and dictionaries, deterministic candidate validation, the advanced content reviewer, the deception and safety policies, a pinned base model, and local CUDA readiness. The materialized rows and run manifest state that human review was bypassed and release is prohibited. Do not publish, benchmark as validated, promote, or merge these artifacts into accepted datasets.
+
 ## SFT
 
 Inspect the proposed run without loading weights:

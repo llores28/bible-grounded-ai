@@ -58,13 +58,23 @@ python -m biblical_moral_ai search-lexicon "ἀγάπη" --language "Koine Greek
 
 `build-reviewer-recruitment-kit` produces a copy-ready recruitment call, qualification and calibration guidance, and a 95-row CSV identifying every candidate file that still needs independent human review. Generated recruitment materials remain local under `data/reviewer_kits/` so identity and outreach details are not accidentally committed.
 
-The pilot and production training preflights intentionally remain separate. Both currently return exit code `2` because real independently reviewed datasets do not yet exist:
+The reviewed pilot and production training preflights intentionally remain separate. Both currently return exit code `2` because real independently reviewed datasets do not yet exist:
 
 ```powershell
 python -m biblical_moral_ai pilot-preflight
 python -m biblical_moral_ai preflight
 python -m biblical_moral_ai train configs/training/apertus_8b_qlora_pilot.json
 ```
+
+For temporary local experimentation, an explicit unreviewed research path bypasses only the human-review, review-ledger, and accepted-count checks. Source licensing, evidence digests, exact citations, candidate validation, content/deception/safety checks, CUDA requirements, and release gates remain enforced:
+
+```powershell
+python -m biblical_moral_ai research-preflight
+python -m biblical_moral_ai materialize-research-pilot --acknowledge-unreviewed
+python -m biblical_moral_ai train configs/training/apertus_8b_qlora_research_unreviewed.json --execute --smoke-test --allow-unreviewed-research
+```
+
+Research rows and run manifests are marked `human_review_bypassed=true` and `release_eligible=false`. They never update accepted counts and cannot be represented as reviewed data, a validated model, or a scholar-facing release.
 
 See [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) before installing optional CUDA dependencies or executing a training run.
 

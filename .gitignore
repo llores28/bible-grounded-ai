@@ -14,6 +14,8 @@ data/index/*.sqlite3-*
 data/index/*.json
 data/pilot/authoring_packets.jsonl
 data/pilot/candidate_review_packets.jsonl
+data/pilot/research_unreviewed_*.json
+data/pilot/research_unreviewed_*.jsonl
 data/audit/
 data/reviewer_kits/
 *.egg-info/

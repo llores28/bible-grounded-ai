@@ -9,7 +9,12 @@ from typing import Any
 
 from .citation import CitationVerifier
 from .content_review import AdvancedContentReviewer
-from .dataset import ReviewedDatasetValidator, materialize_sft_record, read_jsonl
+from .dataset import (
+    ReviewedDatasetValidator,
+    materialize_preference_record,
+    materialize_sft_record,
+    read_jsonl,
+)
 from .evidence_store import file_sha256
 from .pilot_authoring import PilotDraftWorkflow
 from .pilot_candidates import PilotCandidateWorkflow
@@ -27,6 +32,18 @@ from .reviewers import ReviewerWorkflow
 
 
 class PilotWorkflow:
+    RESEARCH_ONLY_NONBLOCKING_CHECKS = frozenset(
+        {
+            "pilot_reviewers",
+            "pilot_review_ledger",
+            "pilot_sft_pilot",
+            "pilot_preference_pilot",
+            "pilot_evaluation_pilot",
+            "pilot_sensitive_coverage",
+            "pilot_datasets",
+        }
+    )
+
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root).resolve()
 
@@ -191,6 +208,138 @@ class PilotWorkflow:
             checks=tuple(checks),
         )
 
+    def research_readiness(self) -> PreflightReport:
+        """Allow unreviewed candidates only for explicitly labeled local research."""
+        normal = self.readiness()
+        checks = [
+            PreflightCheck(
+                check.name,
+                check.passed,
+                (
+                    "research-only human-review bypass; release remains prohibited; "
+                    + check.detail
+                    if check.name in self.RESEARCH_ONLY_NONBLOCKING_CHECKS
+                    else check.detail
+                ),
+                blocking=(
+                    False
+                    if check.name in self.RESEARCH_ONLY_NONBLOCKING_CHECKS
+                    else check.blocking
+                ),
+            )
+            for check in normal.checks
+        ]
+        checks.append(
+            PreflightCheck(
+                "research_unreviewed_scope",
+                True,
+                "local smoke-test research only; outputs are unreviewed and release-ineligible",
+            )
+        )
+        return PreflightReport(
+            ready=all(check.passed for check in checks if check.blocking),
+            checks=tuple(checks),
+        )
+
+    def materialize_unreviewed_research(
+        self, *, acknowledged_unreviewed: bool = False
+    ) -> dict[str, Any]:
+        if not acknowledged_unreviewed:
+            raise ValueError(
+                "explicit acknowledgement is required: data is unreviewed and release-ineligible"
+            )
+        readiness = self.research_readiness()
+        if not readiness.ready:
+            failed = [
+                check.detail
+                for check in readiness.checks
+                if check.blocking and not check.passed
+            ]
+            raise ValueError("research pilot preflight failed: " + " | ".join(failed))
+
+        candidate_paths = {
+            split: self.root / "data/pilot/candidates" / f"{split}.jsonl"
+            for split in ("sft", "preferences", "evals")
+        }
+        candidates = {split: read_jsonl(path) for split, path in candidate_paths.items()}
+        system_prompt = (self.root / "configs/inference/system_prompt.txt").read_text(
+            encoding="utf-8"
+        )
+        outputs = {
+            "sft": self.root / "data/pilot/research_unreviewed_sft.jsonl",
+            "preferences": self.root
+            / "data/pilot/research_unreviewed_preferences.jsonl",
+            "evals": self.root / "data/pilot/research_unreviewed_eval.jsonl",
+        }
+
+        sft_rows = [
+            self._mark_unreviewed(
+                materialize_sft_record(envelope["record"], system_prompt=system_prompt),
+                envelope,
+            )
+            for envelope in candidates["sft"]
+        ]
+        preference_rows = [
+            self._mark_unreviewed(
+                materialize_preference_record(envelope["record"]), envelope
+            )
+            for envelope in candidates["preferences"]
+        ]
+        eval_rows = [
+            self._mark_unreviewed(
+                materialize_sft_record(
+                    {
+                        **envelope["record"],
+                        "record_id": envelope["record"]["case_id"],
+                    },
+                    system_prompt=system_prompt,
+                ),
+                envelope,
+            )
+            for envelope in candidates["evals"]
+        ]
+        materialized = {
+            "sft": sft_rows,
+            "preferences": preference_rows,
+            "evals": eval_rows,
+        }
+        for split, rows in materialized.items():
+            self._write_jsonl(outputs[split], rows)
+
+        manifest_path = self.root / "data/pilot/research_unreviewed_manifest.json"
+        manifest = {
+            "schema_version": "1.0",
+            "status": "unreviewed_research_only",
+            "warning": "Human review was bypassed for local experimentation. These rows are not accepted data and no resulting adapter is eligible for release.",
+            "release_eligible": False,
+            "accepted_counts_modified": False,
+            "source_candidates": {
+                split: {
+                    "path": str(path.relative_to(self.root).as_posix()),
+                    "sha256": file_sha256(path),
+                    "count": len(candidates[split]),
+                }
+                for split, path in candidate_paths.items()
+            },
+            "outputs": {
+                split: {
+                    "path": str(path.relative_to(self.root).as_posix()),
+                    "sha256": file_sha256(path),
+                    "count": len(materialized[split]),
+                }
+                for split, path in outputs.items()
+            },
+        }
+        self._write_json(manifest_path, manifest)
+        return {
+            "status": "unreviewed_research_materialized",
+            "release_eligible": False,
+            "accepted_counts_modified": False,
+            "manifest": str(manifest_path),
+            "outputs": {split: str(path) for split, path in outputs.items()},
+            "counts": {split: len(rows) for split, rows in materialized.items()},
+        }
+
     def materialize(self) -> dict[str, str]:
         readiness = self.readiness()
         if not readiness.ready:
@@ -225,6 +374,19 @@ class PilotWorkflow:
         return {name: str(path) for name, path in outputs.items()}
 
     @staticmethod
+    def _mark_unreviewed(
+        materialized: dict[str, Any], envelope: dict[str, Any]
+    ) -> dict[str, Any]:
+        return {
+            **materialized,
+            "research_status": "unreviewed_candidate",
+            "release_eligible": False,
+            "human_review_bypassed": True,
+            "source_candidate_item_id": envelope["item_id"],
+            "candidate_revision": envelope["candidate_revision"],
+        }
+
+    @staticmethod
     def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
@@ -232,5 +394,15 @@ class PilotWorkflow:
         ) as handle:
             for record in records:
                 handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+            temporary = Path(handle.name)
+        temporary.replace(path)
+
+    @staticmethod
+    def _write_json(path: Path, value: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False
+        ) as handle:
+            handle.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
             temporary = Path(handle.name)
         temporary.replace(path)

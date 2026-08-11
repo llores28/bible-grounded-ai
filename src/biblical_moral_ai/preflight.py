@@ -58,6 +58,7 @@ _REQUIRED_FILES = (
     "configs/pilot/draft_scenarios.json",
     "configs/reviewers.json",
     "configs/training/apertus_8b_qlora.json",
+    "configs/training/apertus_8b_qlora_research_unreviewed.json",
     "configs/training/apertus_8b_dpo.json",
     "data/registry/dataset_manifest.json",
     "data/registry/pilot_manifest.json",

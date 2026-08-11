@@ -20,6 +20,8 @@ The machine-readable status is in `data/registry/dataset_manifest.json`. Counts 
 
 The smoke-test pilot is separately scoped to 50 SFT, 20 preference, and 25 evaluation records. Its committed `draft_only` queue is an authoring plan and counts as zero until complete candidates pass deterministic validation and real independent review under `docs/PILOT_REVIEW_WORKFLOW.md`.
 
+An optional local research materialization may use deterministically validated candidates before human review. Those generated rows are explicitly marked `unreviewed_candidate`, `human_review_bypassed=true`, and `release_eligible=false`; they do not enter accepted manifests or satisfy any reviewed-dataset target.
+
 ## SFT record contract
 
 Every SFT record contains:

@@ -28,7 +28,7 @@ Commandments 5-10 are a hard interpersonal floor. Commandments 1-4 are assessed 
 
 ## Training status
 
-No model adapter has been trained. No expert-reviewed SFT or preference dataset has been accepted. Training commands must fail closed until source licensing, dataset counts, reviewer coverage, CUDA checks, and sealed-evaluation custody pass preflight.
+No model adapter has been trained. No expert-reviewed SFT or preference dataset has been accepted. Reviewed pilot, full training, and release commands must fail closed until source licensing, dataset counts, reviewer coverage, CUDA checks, and sealed-evaluation custody pass preflight. A separate explicitly acknowledged research configuration may run only a local two-step smoke test on labeled unreviewed candidates; its rows and run manifest are release-ineligible and cannot satisfy reviewed or release gates.
 
 Configuration files in `configs/training/` specify the proposed experiments but are not benchmark results. Hyperparameters must be validated with a smoke test and recorded hardware/software manifest before a full run.
 

@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "stage": "sft",
+  "preflight_mode": "research_unreviewed",
+  "model": {
+    "model_id": "swiss-ai/Apertus-8B-Instruct-2509",
+    "revision": "b946d40447b2b597999b9c86d44bee0b452c919f",
+    "reported_license": "apache-2.0",
+    "trust_remote_code": false
+  },
+  "dataset": {
+    "train_path": "data/pilot/research_unreviewed_sft.jsonl",
+    "eval_path": "data/pilot/research_unreviewed_eval.jsonl",
+    "minimum_candidate_train_records": 50,
+    "minimum_candidate_eval_records": 25,
+    "messages_field": "messages",
+    "status": "unreviewed_research_only"
+  },
+  "quantization": {
+    "load_in_4bit": true,
+    "bnb_4bit_quant_type": "nf4",
+    "bnb_4bit_use_double_quant": true,
+    "bnb_4bit_compute_dtype": "bfloat16"
+  },
+  "lora": {
+    "r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "bias": "none",
+    "task_type": "CAUSAL_LM",
+    "target_modules": "all-linear"
+  },
+  "training": {
+    "output_dir": "artifacts/apertus-8b-biblical-moral-research-unreviewed",
+    "max_length": 2048,
+    "num_train_epochs": 1,
+    "per_device_train_batch_size": 1,
+    "per_device_eval_batch_size": 1,
+    "gradient_accumulation_steps": 4,
+    "gradient_checkpointing": true,
+    "learning_rate": 0.0001,
+    "lr_scheduler_type": "cosine",
+    "warmup_ratio": 0.05,
+    "optim": "paged_adamw_8bit",
+    "bf16": true,
+    "logging_steps": 1,
+    "eval_strategy": "no",
+    "save_strategy": "no",
+    "seed": 20260811,
+    "report_to": "none"
+  },
+  "gates": {
+    "project_preflight_required": true,
+    "cuda_required": true,
+    "minimum_gpu_vram_gib": 20,
+    "smoke_test_only": true,
+    "release_prohibited": true,
+    "human_review_bypass_scope": "local_research_only",
+    "production_training_requires_full_manifest": true
+  }
+}
