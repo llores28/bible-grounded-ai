@@ -9,6 +9,7 @@ from typing import Any
 
 from .arithmetic import calculate, verify_equation
 from .citation import CitationVerifier
+from .content_review import AdvancedContentReviewer, RepositoryContentReviewer
 from .corpus_build import build_approved_evidence
 from .evidence_store import EvidenceStore
 from .hardware import inspect_cuda
@@ -20,7 +21,12 @@ from .pilot_seed import PilotSeedBuilder
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import ProjectPreflight
-from .registry import load_commandment_rules, load_deception_taxonomy, load_json
+from .registry import (
+    load_commandment_rules,
+    load_content_review_rules,
+    load_deception_taxonomy,
+    load_json,
+)
 from .release import ReleaseGateEvaluator, ReleaseMetrics
 from .review_ledger import ReviewLedgerValidator
 from .reviewers import ReviewerWorkflow
@@ -40,6 +46,9 @@ def _pipeline(root: Path, corpus_path: Path) -> InferenceReviewPipeline:
             load_commandment_rules(root / "configs/commandments.json"),
             load_deception_taxonomy(root / "configs/deception_taxonomy.json"),
         ),
+        content_reviewer=AdvancedContentReviewer(
+            load_content_review_rules(root / "configs/content_review_rules.json")
+        ),
         citation_verifier=CitationVerifier(corpora),
         organizational_source_ids=corpus_payload.get("organizational_source_ids", []),
     )
@@ -50,6 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", default=".", help="project root")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("validate", help="validate repository structure and registries")
+    commands.add_parser(
+        "audit-content",
+        help="detect contradictions, ambiguity, stale counts, and broken governed content",
+    )
     commands.add_parser("preflight", help="check whether full training is allowed")
     commands.add_parser("pilot-preflight", help="validate the 50/20/25 reviewed pilot")
     commands.add_parser(
@@ -157,6 +170,13 @@ def main(argv: list[str] | None = None) -> int:
         report = ProjectPreflight(root).validate_structure()
         _json(report.to_dict())
         return 0 if report.ready else 1
+    if args.command == "audit-content":
+        report = RepositoryContentReviewer(
+            root,
+            load_content_review_rules(root / "configs/content_review_rules.json"),
+        ).audit()
+        _json(report.to_dict())
+        return 0 if report.passed else 2
     if args.command == "preflight":
         report = ProjectPreflight(root).training_readiness()
         _json(report.to_dict())

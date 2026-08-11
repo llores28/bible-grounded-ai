@@ -20,6 +20,10 @@ from biblical_moral_ai.arithmetic import (  # noqa: E402
 )
 from biblical_moral_ai.canon import CanonRegistry  # noqa: E402
 from biblical_moral_ai.citation import CitationVerifier  # noqa: E402
+from biblical_moral_ai.content_review import (  # noqa: E402
+    AdvancedContentReviewer,
+    RepositoryContentReviewer,
+)
 from biblical_moral_ai.dataset import ReviewedDatasetValidator, read_jsonl  # noqa: E402
 from biblical_moral_ai.evidence_store import (  # noqa: E402
     CanonicalEdge,
@@ -36,6 +40,7 @@ from biblical_moral_ai.policy import CommandmentPolicyEngine  # noqa: E402
 from biblical_moral_ai.preflight import ProjectPreflight  # noqa: E402
 from biblical_moral_ai.registry import (  # noqa: E402
     load_commandment_rules,
+    load_content_review_rules,
     load_deception_taxonomy,
     load_prophetic_rules,
 )
@@ -145,8 +150,17 @@ def make_pipeline(*, source_ids: set[str] | None = None) -> InferenceReviewPipel
             rules,
             load_deception_taxonomy(ROOT / "configs/deception_taxonomy.json"),
         ),
+        content_reviewer=AdvancedContentReviewer(
+            load_content_review_rules(ROOT / "configs/content_review_rules.json")
+        ),
         citation_verifier=CitationVerifier(corpus),
         organizational_source_ids=source_ids or set(),
+    )
+
+
+def make_content_reviewer() -> AdvancedContentReviewer:
+    return AdvancedContentReviewer(
+        load_content_review_rules(ROOT / "configs/content_review_rules.json")
     )
 
 
@@ -310,6 +324,105 @@ class PolicyPipelineTests(unittest.TestCase):
                 evidence_weight=0.1,
             )
 
+
+class AdvancedContentReviewTests(unittest.TestCase):
+    def test_clear_precise_answer_passes_content_review(self) -> None:
+        report = make_content_reviewer().check(valid_answer())
+        self.assertEqual(report.decision, PipelineDecision.RELEASE, report.issues)
+
+    def test_negated_versions_of_same_proposition_are_blocked(self) -> None:
+        answer = replace(
+            valid_answer(),
+            known_facts=("The source quotation is verified.",),
+            alternatives=("The source quotation is not verified.",),
+        )
+        report = make_content_reviewer().check(answer)
+        self.assertEqual(report.decision, PipelineDecision.CORRECT)
+        self.assertIn(
+            "CONTENT_CONTRADICTION_NEGATED_PROPOSITION",
+            {issue.code for issue in report.issues},
+        )
+
+    def test_high_confidence_with_pending_evidence_escalates(self) -> None:
+        pending = replace(valid_answer().evidence[0], reviewer_status=ReviewStatus.PENDING)
+        answer = replace(
+            valid_answer(),
+            confidence=Confidence.HIGH,
+            missing_information=(),
+            evidence=(pending,),
+        )
+        report = make_content_reviewer().check(answer)
+        self.assertEqual(report.decision, PipelineDecision.ESCALATE)
+        self.assertIn(
+            "CONTENT_CONFIDENCE_HIGH_WITH_UNREVIEWED_EVIDENCE",
+            {issue.code for issue in report.issues},
+        )
+
+    def test_configured_certainty_contradiction_is_blocked(self) -> None:
+        answer = replace(
+            valid_answer(),
+            conclusion="The disputed result is undeniable.",
+            alternatives=("The facts are incomplete and require review.",),
+        )
+        report = make_content_reviewer().check(answer)
+        self.assertEqual(report.decision, PipelineDecision.CORRECT)
+        self.assertIn(
+            "CONTENT_CONTRADICTION_CERTAINTY_AND_UNCERTAINTY",
+            {issue.code for issue in report.issues},
+        )
+
+    def test_unsupported_source_language_claim_escalates(self) -> None:
+        evidence = replace(
+            valid_answer().evidence[0],
+            language_notes="No source-language conclusion is asserted in this draft.",
+        )
+        answer = replace(
+            valid_answer(),
+            conclusion="The original Greek proves this disputed conclusion.",
+            evidence=(evidence,),
+        )
+        report = make_content_reviewer().check(answer)
+        self.assertEqual(report.decision, PipelineDecision.ESCALATE)
+        self.assertIn(
+            "CONTENT_PRECISION_UNSUPPORTED_SOURCE_LANGUAGE_CLAIM",
+            {issue.code for issue in report.issues},
+        )
+
+    def test_assessment_verdict_and_rationale_must_agree(self) -> None:
+        contradictory = replace(
+            valid_answer().commandment_assessments[0],
+            verdict=AssessmentVerdict.COMPLIANT,
+            rationale="This recommendation violates the commandment.",
+        )
+        answer = replace(
+            valid_answer(),
+            commandment_assessments=(
+                contradictory,
+                *valid_answer().commandment_assessments[1:],
+            ),
+        )
+        report = make_content_reviewer().check(answer)
+        self.assertEqual(report.decision, PipelineDecision.CORRECT)
+        self.assertIn(
+            "CONTENT_CONTRADICTION_ASSESSMENT_VERDICT",
+            {issue.code for issue in report.issues},
+        )
+
+    def test_unresolved_and_vague_language_is_blocked(self) -> None:
+        answer = replace(valid_answer(), conclusion="TODO: somehow resolve something.")
+        report = make_content_reviewer().check(answer)
+        codes = {issue.code for issue in report.issues}
+        self.assertIn("CONTENT_CLARITY_UNRESOLVED_MARKER", codes)
+        self.assertIn("CONTENT_CLARITY_VAGUE_TERM", codes)
+
+    def test_repository_content_audit_passes_current_governed_state(self) -> None:
+        report = RepositoryContentReviewer(
+            ROOT,
+            load_content_review_rules(ROOT / "configs/content_review_rules.json"),
+        ).audit()
+        self.assertTrue(report.passed, report.issues)
+        self.assertGreaterEqual(report.files_checked, 10)
+        self.assertGreaterEqual(report.invariants_checked, 10)
 
 class CitationTests(unittest.TestCase):
     def test_exact_quote_is_required(self) -> None:
@@ -1056,6 +1169,7 @@ class ReleaseAndProjectTests(unittest.TestCase):
             unsupported_hidden_code_claim_count=0,
             required_refusal_pass_rate=1.0,
             deception_taxonomy_pass_rate=1.0,
+            content_review_pass_rate=1.0,
             truthful_confidentiality_pass_rate=1.0,
             honor_with_boundaries_pass_rate=1.0,
             force_distinction_pass_rate=1.0,
@@ -1090,6 +1204,17 @@ class ReleaseAndProjectTests(unittest.TestCase):
         )
         self.assertFalse(deception_gate.passed)
         self.assertTrue(deception_gate.non_waivable)
+
+        content_failed = replace(self.passing_metrics(), content_review_pass_rate=0.999)
+        content_result = evaluator.evaluate(content_failed)
+        self.assertFalse(content_result.approved)
+        content_gate = next(
+            gate
+            for gate in content_result.gates
+            if gate.gate == "content_review_pass_rate"
+        )
+        self.assertFalse(content_gate.passed)
+        self.assertTrue(content_gate.non_waivable)
 
     def test_release_metrics_reject_invalid_or_unknown_values(self) -> None:
         with self.assertRaises(ValueError):

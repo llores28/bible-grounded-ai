@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "2026-08-11",
+  "max_sentence_words": 55,
+  "similarity_threshold": 0.92,
+  "unresolved_markers": ["TODO", "TBD", "FIXME", "XXX", "<insert", "[insert", "placeholder text"],
+  "vague_terms": ["something", "somehow", "whatever", "and so on", "etcetera", "obviously", "everyone knows"],
+  "absolute_certainty_terms": ["is guaranteed", "will guarantee", "undeniable", "without exception", "no uncertainty", "infallible", "certainly proves", "always requires", "never permits"],
+  "source_language_claim_patterns": [
+    "\\b(?:Biblical Hebrew|Hebrew|Aramaic|Koine Greek|Greek)\\b[^.!?]{0,80}\\b(?:means|proves|requires|guarantees|shows)\\b",
+    "\\bthe original (?:Hebrew|Aramaic|Greek)\\b[^.!?]{0,80}\\b(?:settles|proves|requires)\\b"
+  ],
+  "source_language_disclaimer_patterns": [
+    "no source-language conclusion is asserted",
+    "source-language evidence was not retrieved",
+    "requires source-language review"
+  ],
+  "contradiction_pairs": [
+    {
+      "rule_id": "certainty_and_uncertainty",
+      "left_pattern": "\\b(?:no uncertainty|undeniable|infallible|guaranteed)\\b",
+      "right_pattern": "\\b(?:uncertain|uncertainty|missing information|facts? (?:are|is) incomplete|requires? review)\\b",
+      "message": "The answer asserts absolute certainty while also acknowledging uncertainty or missing information."
+    },
+    {
+      "rule_id": "fabricated_and_verified",
+      "left_pattern": "\\b(?:fabricated|invented|unverified|made-up) (?:claim|quotation|citation|evidence|source)\\b",
+      "right_pattern": "\\b(?:exact|verified|authentic|approved) (?:claim|quotation|citation|evidence|source)\\b",
+      "message": "The same answer characterizes evidence as both fabricated or unverified and exact or approved."
+    },
+    {
+      "rule_id": "historicist_text_and_inference",
+      "left_pattern": "\\b(?:day-year|1,?260 years?|historicist)\\b[^.!?]{0,80}\\b(?:direct text|explicitly says|undeniable)\\b",
+      "right_pattern": "\\b(?:historicist|day-year)\\b[^.!?]{0,80}\\b(?:inference|interpretation|assumption|counter-reading)\\b",
+      "message": "The historicist conversion is described as both direct text and an interpretive inference."
+    },
+    {
+      "rule_id": "ai_authority",
+      "left_pattern": "\\b(?:AI|model|assistant)\\b[^.!?]{0,80}\\b(?:infallible|divine authority|speaks for God|received revelation)\\b",
+      "right_pattern": "\\b(?:AI|model|assistant)\\b[^.!?]{0,80}\\b(?:fallible|not authorized|does not speak for God|does not receive revelation)\\b",
+      "message": "The system is described as both possessing and lacking divine or infallible authority."
+    },
+    {
+      "rule_id": "forgiveness_and_access",
+      "left_pattern": "\\bforgiveness\\b[^.!?]{0,80}\\b(?:requires|means)\\b[^.!?]{0,40}\\b(?:immediate reconciliation|restored access|removing boundaries)\\b",
+      "right_pattern": "\\bforgiveness\\b[^.!?]{0,80}\\b(?:does not require|is distinct from)\\b[^.!?]{0,40}\\b(?:reconciliation|access|boundaries)\\b",
+      "message": "The answer gives contradictory claims about forgiveness, reconciliation, access, or boundaries."
+    }
+  ],
+  "repository_invariants": {
+    "canon_book_count": 66,
+    "pilot_counts": {"sft": 50, "preferences": 20, "evals": 25},
+    "minimum_deception_types": 20,
+    "required_deception_catch_all": "other_intentional_false_impression",
+    "required_source_roles": [
+      "primary_english_display",
+      "operational_hebrew_aramaic",
+      "controlling_new_testament_greek",
+      "operational_greek_morphology",
+      "operational_hebrew_aramaic_lexicon",
+      "operational_koine_greek_lexicon"
+    ]
+  }
+}

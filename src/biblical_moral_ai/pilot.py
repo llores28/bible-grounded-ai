@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .citation import CitationVerifier
+from .content_review import AdvancedContentReviewer
 from .dataset import ReviewedDatasetValidator, materialize_sft_record, read_jsonl
 from .evidence_store import file_sha256
 from .pilot_authoring import PilotDraftWorkflow
@@ -15,7 +16,12 @@ from .pilot_candidates import PilotCandidateWorkflow
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import PreflightCheck, PreflightReport, ProjectPreflight
-from .registry import load_commandment_rules, load_deception_taxonomy, load_json
+from .registry import (
+    load_commandment_rules,
+    load_content_review_rules,
+    load_deception_taxonomy,
+    load_json,
+)
 from .review_ledger import ReviewLedgerValidator
 from .reviewers import ReviewerWorkflow
 
@@ -31,9 +37,12 @@ class PilotWorkflow:
             if check.name in {
                 "required_files",
                 "commandment_registry",
+                "content_review_registry",
+                "deception_taxonomy",
                 "canon_registry",
                 "prophetic_registry",
                 "json_artifacts",
+                "repository_content",
                 "approved_textual_sources",
                 "source_package_locks",
                 "built_evidence_store",
@@ -105,6 +114,11 @@ class PilotWorkflow:
                 commandment_policy=CommandmentPolicyEngine(
                     load_commandment_rules(self.root / "configs/commandments.json"),
                     load_deception_taxonomy(self.root / "configs/deception_taxonomy.json"),
+                ),
+                content_reviewer=AdvancedContentReviewer(
+                    load_content_review_rules(
+                        self.root / "configs/content_review_rules.json"
+                    )
                 ),
                 citation_verifier=CitationVerifier(corpora),
                 organizational_source_ids=corpus_payload.get(

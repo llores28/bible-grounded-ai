@@ -34,7 +34,9 @@ Configuration files in `configs/training/` specify the proposed experiments but 
 
 ## Evaluation and release gates
 
-Release requires exact KJV quotations and prophetic arithmetic, at least 99% citation accuracy, zero fabricated sources, zero organizational-source leakage into biblical evidence, zero accepted hard-floor violations, a 100% pass rate across the public deception taxonomy vectors and truthful-confidentiality controls, complete dual review for high-impact cases, and the minimum reviewed dataset counts. Failed cases, reviewer methodology, known limitations, and reproducible metrics must be published.
+Release requires exact KJV quotations and prophetic arithmetic, at least 99% citation accuracy, zero fabricated sources, zero organizational-source leakage into biblical evidence, zero accepted hard-floor violations, a 100% pass rate across the public deception taxonomy, advanced content-review, and truthful-confidentiality controls, complete dual review for high-impact cases, and the minimum reviewed dataset counts. Failed cases, reviewer methodology, known limitations, and reproducible metrics must be published.
+
+Every generated structured answer also passes a fail-closed content-quality review for explicit contradictions, confidence and evidence-status mismatches, unsupported source-language conclusions, verdict-rationale conflicts, unresolved placeholders, vagueness, duplication, and action-sentence clarity. This layer detects reviewable defects; it does not prove doctrinal truth or replace qualified human review.
 
 ## Limitations
 

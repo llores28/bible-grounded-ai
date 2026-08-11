@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from .citation import CitationVerifier
+from .content_review import AdvancedContentReviewer
 from .decisions import strongest_decision
 from .policy import CommandmentPolicyEngine
 from .safety import PastoralSafetyChecker
@@ -26,11 +27,13 @@ class InferenceReviewPipeline:
         self,
         *,
         commandment_policy: CommandmentPolicyEngine,
+        content_reviewer: AdvancedContentReviewer,
         citation_verifier: CitationVerifier,
         safety_checker: PastoralSafetyChecker | None = None,
         organizational_source_ids: Iterable[str] = (),
     ) -> None:
         self.commandment_policy = commandment_policy
+        self.content_reviewer = content_reviewer
         self.citation_verifier = citation_verifier
         self.safety_checker = safety_checker or PastoralSafetyChecker()
         self.organizational_source_ids = set(organizational_source_ids)
@@ -38,6 +41,7 @@ class InferenceReviewPipeline:
     def review(self, answer: MoralAnswer) -> VerificationReport:
         reports = (
             self.commandment_policy.check(answer),
+            self.content_reviewer.check(answer),
             self.citation_verifier.check(answer),
             self.safety_checker.check(answer),
         )

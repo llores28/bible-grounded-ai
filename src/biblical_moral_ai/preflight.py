@@ -9,10 +9,12 @@ from typing import Any
 
 from .arithmetic import verify_equation
 from .canon import CanonRegistry
+from .content_review import RepositoryContentReviewer
 from .evidence_store import file_sha256
 from .registry import (
     RegistryError,
     load_commandment_rules,
+    load_content_review_rules,
     load_deception_taxonomy,
     load_json,
     load_prophetic_rules,
@@ -47,6 +49,7 @@ _REQUIRED_FILES = (
     "LICENSES.md",
     "PROPHETIC_RULE_REGISTRY.yaml",
     "configs/commandments.json",
+    "configs/content_review_rules.json",
     "configs/deception_taxonomy.json",
     "configs/canon.json",
     "configs/data/source_registry.json",
@@ -62,6 +65,7 @@ _REQUIRED_FILES = (
     "schemas/pilot-review.schema.json",
     "schemas/pilot-adjudication.schema.json",
     "schemas/deception-taxonomy.schema.json",
+    "schemas/content-review-rules.schema.json",
     "schemas/reviewer-registry.schema.json",
     "evals/sealed/manifest.json",
 )
@@ -100,6 +104,20 @@ class ProjectPreflight:
             )
         except (RegistryError, ValueError) as exc:
             checks.append(PreflightCheck("commandment_registry", False, str(exc)))
+
+        try:
+            content_rules = load_content_review_rules(
+                self.root / "configs/content_review_rules.json"
+            )
+            checks.append(
+                PreflightCheck(
+                    "content_review_registry",
+                    bool(content_rules["contradiction_pairs"]),
+                    f"{len(content_rules['contradiction_pairs'])} contradiction families and repository invariants loaded",
+                )
+            )
+        except (RegistryError, ValueError, KeyError, TypeError) as exc:
+            checks.append(PreflightCheck("content_review_registry", False, str(exc)))
 
         try:
             deception_types = load_deception_taxonomy(
@@ -165,6 +183,29 @@ class ProjectPreflight:
                 else "; ".join(json_errors),
             )
         )
+
+        try:
+            content_report = RepositoryContentReviewer(
+                self.root,
+                load_content_review_rules(self.root / "configs/content_review_rules.json"),
+            ).audit()
+            checks.append(
+                PreflightCheck(
+                    "repository_content",
+                    content_report.passed,
+                    (
+                        f"{content_report.files_checked} governed files and "
+                        f"{content_report.invariants_checked} derived invariants reviewed"
+                        if content_report.passed
+                        else "; ".join(
+                            f"{issue.path}:{issue.line or 0} {issue.code}"
+                            for issue in content_report.issues
+                        )
+                    ),
+                )
+            )
+        except (OSError, ValueError, KeyError, TypeError, RegistryError) as exc:
+            checks.append(PreflightCheck("repository_content", False, str(exc)))
 
         try:
             public_cases = load_json(self.root / "evals/public/commandment_cases.json")["cases"]

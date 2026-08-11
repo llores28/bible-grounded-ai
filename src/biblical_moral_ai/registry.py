@@ -85,6 +85,74 @@ def load_deception_taxonomy(path: str | Path) -> dict[str, dict[str, Any]]:
     return by_id
 
 
+def load_content_review_rules(path: str | Path) -> dict[str, Any]:
+    payload = load_json(path)
+    if payload.get("schema_version") != "1.0":
+        raise RegistryError("unsupported content review rules schema_version")
+    max_words = payload.get("max_sentence_words")
+    threshold = payload.get("similarity_threshold")
+    if not isinstance(max_words, int) or not 20 <= max_words <= 100:
+        raise RegistryError("max_sentence_words must be an integer between 20 and 100")
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)):
+        raise RegistryError("similarity_threshold must be numeric")
+    if not 0.8 <= float(threshold) <= 1.0:
+        raise RegistryError("similarity_threshold must be between 0.8 and 1.0")
+
+    for field in (
+        "unresolved_markers",
+        "vague_terms",
+        "absolute_certainty_terms",
+        "source_language_claim_patterns",
+        "source_language_disclaimer_patterns",
+    ):
+        values = payload.get(field)
+        if not isinstance(values, list) or not values or not all(
+            isinstance(value, str) and value.strip() for value in values
+        ):
+            raise RegistryError(f"content review rules require non-empty {field}")
+        if field.endswith("_patterns"):
+            for value in values:
+                try:
+                    re.compile(value, re.IGNORECASE)
+                except re.error as exc:
+                    raise RegistryError(f"invalid regex in {field}: {value}: {exc}") from exc
+
+    pairs = payload.get("contradiction_pairs")
+    if not isinstance(pairs, list) or not pairs:
+        raise RegistryError("content review rules require contradiction_pairs")
+    seen: set[str] = set()
+    for item in pairs:
+        if not isinstance(item, dict):
+            raise RegistryError("every contradiction pair must be an object")
+        rule_id = item.get("rule_id")
+        if not isinstance(rule_id, str) or not re.fullmatch(r"[a-z][a-z0-9_]+", rule_id):
+            raise RegistryError(f"invalid contradiction rule_id: {rule_id!r}")
+        if rule_id in seen:
+            raise RegistryError(f"duplicate contradiction rule_id: {rule_id}")
+        seen.add(rule_id)
+        for field in ("left_pattern", "right_pattern", "message"):
+            if not isinstance(item.get(field), str) or not item[field].strip():
+                raise RegistryError(f"{rule_id} requires non-empty {field}")
+        for field in ("left_pattern", "right_pattern"):
+            try:
+                re.compile(item[field], re.IGNORECASE)
+            except re.error as exc:
+                raise RegistryError(f"invalid regex in {rule_id}.{field}: {exc}") from exc
+
+    invariants = payload.get("repository_invariants")
+    if not isinstance(invariants, dict):
+        raise RegistryError("content review rules require repository_invariants")
+    counts = invariants.get("pilot_counts")
+    if not isinstance(counts, dict) or set(counts) != {"sft", "preferences", "evals"}:
+        raise RegistryError("repository invariants require exact pilot split counts")
+    if not all(isinstance(value, int) and value > 0 for value in counts.values()):
+        raise RegistryError("pilot split counts must be positive integers")
+    roles = invariants.get("required_source_roles")
+    if not isinstance(roles, list) or not roles or len(set(roles)) != len(roles):
+        raise RegistryError("required_source_roles must be a non-empty unique list")
+    return payload
+
+
 def load_prophetic_rules(path: str | Path) -> dict[str, dict[str, Any]]:
     payload = load_json(path)
     if payload.get("schema_version") != "1.0":

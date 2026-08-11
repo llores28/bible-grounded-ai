@@ -12,11 +12,16 @@ from typing import Protocol
 from urllib.parse import urlparse
 
 from .citation import CitationVerifier
+from .content_review import AdvancedContentReviewer
 from .decisions import strongest_decision
 from .evidence_store import EvidenceStore, Passage
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
-from .registry import load_commandment_rules, load_deception_taxonomy
+from .registry import (
+    load_commandment_rules,
+    load_content_review_rules,
+    load_deception_taxonomy,
+)
 from .render import render_moral_answer
 from .schemas import (
     IssueSeverity,
@@ -136,6 +141,9 @@ class BiblicalMoralAgent:
             load_commandment_rules(self.root / "configs/commandments.json"),
             load_deception_taxonomy(self.root / "configs/deception_taxonomy.json"),
         )
+        self.content_reviewer = AdvancedContentReviewer(
+            load_content_review_rules(self.root / "configs/content_review_rules.json")
+        )
 
     def answer(self, request_text: str) -> AgentResult:
         if not request_text.strip():
@@ -179,6 +187,7 @@ class BiblicalMoralAgent:
         corpora = self.store.export_corpora(retrieved)
         pipeline = InferenceReviewPipeline(
             commandment_policy=self.commandment_policy,
+            content_reviewer=self.content_reviewer,
             citation_verifier=CitationVerifier(
                 corpora,
                 approved_source_ids=set(corpora),

@@ -76,6 +76,8 @@ Each moral answer must contain the ten fields represented by `MoralAnswer`: know
 
 The inference pipeline may release, correct, refuse, or escalate. Any detected hard-floor violation blocks delivery. Correction cannot silently alter cited evidence; corrected output must pass the full pipeline again.
 
+An independent content-quality verifier must also block explicit contradictions, unsupported certainty, unresolved authoring language, source-language claims without reviewed linguistic evidence, and material disagreement between an assessment verdict and its rationale. It may suggest a precise correction, but it must not silently rewrite Scripture, evidence, doctrine, reviewer decisions, or high-impact safety conclusions.
+
 ## Change control
 
 Changes require a versioned proposal, textual rationale, regression tests, two independent reviewers, conflict-of-interest disclosure, and adjudication for disputed doctrine or safety behavior. A denomination's agreement or a reviewer's affiliation is never a success metric.

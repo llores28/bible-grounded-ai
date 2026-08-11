@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/content-review-rules.schema.json",
+  "title": "ContentReviewRules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy_version", "max_sentence_words", "similarity_threshold", "unresolved_markers", "vague_terms", "absolute_certainty_terms", "source_language_claim_patterns", "source_language_disclaimer_patterns", "contradiction_pairs", "repository_invariants"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "policy_version": {"type": "string", "minLength": 1},
+    "max_sentence_words": {"type": "integer", "minimum": 20, "maximum": 100},
+    "similarity_threshold": {"type": "number", "minimum": 0.8, "maximum": 1.0},
+    "unresolved_markers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "vague_terms": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "absolute_certainty_terms": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "source_language_claim_patterns": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "source_language_disclaimer_patterns": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "contradiction_pairs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "left_pattern", "right_pattern", "message"],
+        "properties": {
+          "rule_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+          "left_pattern": {"type": "string", "minLength": 1},
+          "right_pattern": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "repository_invariants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canon_book_count", "pilot_counts", "minimum_deception_types", "required_deception_catch_all", "required_source_roles"],
+      "properties": {
+        "canon_book_count": {"type": "integer", "minimum": 1},
+        "pilot_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sft", "preferences", "evals"],
+          "properties": {
+            "sft": {"type": "integer", "minimum": 1},
+            "preferences": {"type": "integer", "minimum": 1},
+            "evals": {"type": "integer", "minimum": 1}
+          }
+        },
+        "minimum_deception_types": {"type": "integer", "minimum": 1},
+        "required_deception_catch_all": {"type": "string", "minLength": 1},
+        "required_source_roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}
