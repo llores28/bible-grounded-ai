@@ -56,6 +56,8 @@ python -m biblical_moral_ai search-lexicon "חֶסֶד" --language Hebrew
 python -m biblical_moral_ai search-lexicon "ἀγάπη" --language "Koine Greek"
 ```
 
+`build-reviewer-recruitment-kit` produces a copy-ready recruitment call, qualification and calibration guidance, and a 95-row CSV identifying every candidate file that still needs independent human review. Generated recruitment materials remain local under `data/reviewer_kits/` so identity and outreach details are not accidentally committed.
+
 The pilot and production training preflights intentionally remain separate. Both currently return exit code `2` because real independently reviewed datasets do not yet exist:
 
 ```powershell

@@ -44,6 +44,8 @@ python -m biblical_moral_ai build-reviewer-recruitment-kit
 python -m biblical_moral_ai audit-reviewers
 ```
 
+The recruitment kit includes a copy-ready reviewer call, a qualification rubric, a blinded calibration plan, and `review-inventory.csv`. The inventory identifies all 95 candidate locations and the required qualification lane and independent decision count for each item. It is a handoff aid, not evidence of approval.
+
 `general` qualifies a reviewer only for non-sensitive cases. Prophecy, abuse, violence, force, and disputed doctrine each require an explicit matching qualification. Two qualified reviewers are required for those lanes; a third qualified reviewer is recommended so a disagreement can be adjudicated by someone who did not submit a first-pass decision.
 
 ```powershell

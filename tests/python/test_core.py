@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import sys
@@ -693,6 +694,99 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(exported["bundle_count"], 2)
             for bundle in exported["bundles"].values():
                 self.assertTrue(Path(bundle["zip_path"]).is_file())
+
+    def test_recruitment_kit_exports_complete_review_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "configs/pilot").mkdir(parents=True)
+            (root / "data/pilot/candidates").mkdir(parents=True)
+            queue = {
+                "sft": [
+                    {
+                        "item_id": "SFT-DRAFT-001",
+                        "category": "truthfulness",
+                        "high_impact": False,
+                        "source_id": "KJV",
+                        "reference": "Exodus 20:16",
+                        "review_focus": "Check truthfulness.",
+                    }
+                ],
+                "preferences": [
+                    {
+                        "item_id": "DPO-DRAFT-001",
+                        "category": "truthfulness",
+                        "high_impact": False,
+                        "source_id": "KJV",
+                        "reference": "Proverbs 12:22",
+                        "review_focus": "Compare answers.",
+                    }
+                ],
+                "evals": [
+                    {
+                        "item_id": "EVAL-DRAFT-001",
+                        "category": "abuse",
+                        "high_impact": True,
+                        "source_id": "KJV",
+                        "reference": "Isaiah 1:17",
+                        "review_focus": "Check safeguarding.",
+                    }
+                ],
+            }
+            queue_path = root / "configs/pilot/draft_scenarios.json"
+            queue_path.write_text(json.dumps(queue), encoding="utf-8")
+            registry = {
+                "schema_version": "1.0",
+                "status": "recruitment_required",
+                "qualified_categories": ["general", "abuse"],
+                "reviewers": [],
+            }
+            (root / "configs/reviewers.json").write_text(
+                json.dumps(registry), encoding="utf-8"
+            )
+            (root / "data/pilot/candidates/sft.jsonl").write_text(
+                json.dumps(
+                    {
+                        "item_id": "SFT-DRAFT-001",
+                        "record": {
+                            "answer": {
+                                "evidence": [
+                                    {
+                                        "language_notes": "No source-language conclusion is asserted in this draft."
+                                    }
+                                ]
+                            }
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "data/pilot/candidate_review_packets.jsonl").write_text(
+                json.dumps({"item_id": "SFT-DRAFT-001"}) + "\n", encoding="utf-8"
+            )
+
+            result = ReviewerWorkflow(root).build_recruitment_kit()
+
+            inventory_path = root / "data/reviewer_kits/recruitment/review-inventory.csv"
+            with inventory_path.open(encoding="utf-8", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(
+                [row["required_independent_reviewers"] for row in rows],
+                ["1", "2", "2"],
+            )
+            self.assertEqual(rows[0]["candidate_line"], "1")
+            self.assertEqual(rows[0]["review_packet_line"], "1")
+            self.assertEqual(
+                rows[0]["source_language_review"],
+                "not_required_no_language_claim_asserted",
+            )
+            self.assertEqual(rows[2]["qualification_lane"], "abuse")
+            self.assertEqual(rows[2]["review_status"], "awaiting_independent_human_review")
+            self.assertIn("review-inventory.csv", result["files"])
+            self.assertTrue(
+                (root / "data/reviewer_kits/recruitment/QUALIFICATION_RUBRIC.md").is_file()
+            )
 
     def test_sensitive_categories_and_license_decisions_are_fail_closed(self) -> None:
         review = {

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import re
 import tempfile
@@ -233,6 +235,21 @@ class ReviewerWorkflow:
             "independence_attested_on": "REPLACE_WITH_YYYY-MM-DD",
             "qualified_categories": ["general"],
         }
+        inventory_rows = self._build_review_inventory(queue_path)
+        first_pass_decisions = sum(
+            int(row["required_independent_reviewers"]) for row in inventory_rows
+        )
+        language_claim_packets = sum(
+            row["source_language_review"] == "required_language_claim_asserted"
+            for row in inventory_rows
+        )
+        requirements["source_language_claim_packets"] = language_claim_packets
+        language_recruitment_status = (
+            "The present candidates state that no source-language conclusion is asserted."
+            if language_claim_packets == 0
+            else f"{language_claim_packets} present candidate packets assert a source-language "
+            "conclusion and require matching language expertise."
+        )
         readme = """# Independent pilot reviewer recruitment kit
 
 This kit recruits real people; it does not create approvals. Do not invent an identity, reuse another person's attestation, or activate a reviewer without their informed participation.
@@ -245,11 +262,90 @@ This kit recruits real people; it does not create approvals. Do not invent an id
 6. Add the reviewed registration to `configs/reviewers.json`, set the registry status to `active`, run `audit-reviewers`, then create assignments and per-reviewer kits.
 
 Two qualified independent reviewers are mandatory for every preference pair and every sensitive case. A third qualified person is recommended in each lane so disagreements can be adjudicated without reusing an assigned reviewer.
+
+Files in this kit:
+
+- `review-inventory.csv`: the complete review queue, repository file locations, qualification lanes, and required independent decisions.
+- `RECRUITMENT_CALL.md`: a copy-ready invitation for paid or volunteer reviewers.
+- `QUALIFICATION_RUBRIC.md`: minimum evidence and lane-specific competence requirements.
+- `CALIBRATION_PLAN.md`: a blinded pre-assignment exercise that tests method without pretending to create theological approval.
+- `reviewer-registration.template.json`: a deliberately inactive registration template.
+- `requirements.json`: hash-bound capacity gaps and current readiness state.
+"""
+        recruitment_call = f"""# Call for independent pilot reviewers
+
+The Bible-Grounded AI Initiative is recruiting independent human reviewers for a public research prototype. The current pilot has {len(inventory_rows)} candidate packets requiring {first_pass_decisions} first-pass review decisions. Generated content and automated checks do not count as approval.
+
+## Work
+
+Reviewers verify exact citations, context, bounded moral application, clarity, uncertainty, counter-readings, affected people, safety referrals, and release/refuse/escalate behavior. Reviews are blinded: first-pass reviewers do not see one another's decisions.
+
+The project needs general biblical-studies reviewers and explicitly qualified reviewers for prophecy, disputed doctrine, abuse, violence, and force. Hebrew, Biblical Aramaic, or Koine Greek expertise is required whenever a candidate asserts a source-language conclusion. {language_recruitment_status}
+
+## Independence and disclosure
+
+Applicants must disclose denominational, institutional, project, and relevant personal affiliations. Candidate authors cannot review their own records. No reviewer is selected or scored because a denomination agrees with a conclusion.
+
+## How to apply
+
+Provide a short CV or equivalent evidence of relevant training and experience, the lanes requested, any biblical-language competence, affiliations and conflicts, availability, and whether paid or volunteer work is being offered. Selected applicants complete the calibration exercise before receiving assignments.
+
+This invitation is not a claim that the project, dataset, or model has been human approved. Accepted counts remain zero until the governed review ledger validates real decisions.
+"""
+        qualification_rubric = """# Reviewer qualification rubric
+
+Qualification is evidence-based and lane-specific. Agreement with the project owner, a denomination, or another reviewer is not a qualification.
+
+## Required for every reviewer
+
+- Verified identity and a CV, transcript, publication record, professional credential, or equivalent evidence of relevant competence.
+- Ability to distinguish explicit text, canonical synthesis, historical interpretation, organizational alignment, and speculation.
+- Ability to check exact quotations and references and state uncertainty without inventing evidence.
+- Written affiliation/conflict disclosure and informed independence attestation.
+- Successful blinded calibration for the assigned lane. Calibration tests method; it does not turn an unqualified person into a subject-matter expert.
+
+## Lane evidence
+
+- `general`: relevant biblical-studies, theology, ministry, ethics, or comparable research experience and demonstrated evidence review.
+- `prophecy`: demonstrated prophetic/hermeneutics work and the ability to represent historicist and serious alternative readings, assumptions, calculations, and uncertainty.
+- `disputed_doctrine`: systematic, historical, or biblical theology competence and fair representation of multiple serious interpretive schools.
+- `abuse`: trauma-informed safeguarding, social-work, clinical, legal, ethics, survivor-advocacy, or comparable professional competence in addition to sufficient biblical-literacy support.
+- `violence`: ethics, safeguarding, conflict de-escalation, legal, clinical, or comparable competence; review must not introduce tactical harm instructions.
+- `force`: ethics, safeguarding, legal, public-safety, military-ethics, or comparable competence; review must preserve jurisdictional uncertainty and avoid blanket lethal authorization.
+
+## Biblical-language claims
+
+A source-language conclusion requires a reviewer with documented competence in the language actually used: Biblical Hebrew, Biblical Aramaic, or Koine Greek. The reviewer must identify the approved source text, morphology or parsing, lexical evidence, semantic/contextual limits, and plausible alternatives. Owning or searching a dictionary alone is not sufficient qualification.
+
+## Automatic disqualifiers for the affected assignment
+
+- Reviewing one's own authored candidate or seeing another first-pass decision before submitting.
+- Fabricated citations, credentials, identity, experience, or attestation.
+- Undisclosed material conflicts or affiliations.
+- Claiming certainty beyond the supplied evidence.
+- Unsafe advice in abuse, violence, force, medical, mental-health, or legal contexts.
+"""
+        calibration_plan = """# Blinded reviewer calibration plan
+
+Calibration verifies that a prospective reviewer can follow the method. It is not a substitute for credentials, independent review, or adjudication.
+
+1. Give each applicant the same blinded sample for every lane they seek to review. Include at least one general packet and one packet from each requested sensitive lane.
+2. Require exact-citation checks, explicit assumptions, strongest serious counter-reading, uncertainty, commandment assessment, affected people, safety concerns, and a decision of approve, revise, or reject.
+3. Keep applicants from seeing one another's work until all calibration responses are locked.
+4. Evaluate evidence accuracy, clarity, category competence, safety, fair treatment of counter-readings, and compliance with the review schema. Do not score denominational agreement.
+5. Reject the affected lane for fabricated evidence, missed immediate-danger escalation, unsafe tactical advice, hidden conflicts, or inability to explain material uncertainty.
+6. Discuss rubric misunderstandings using the locked responses. A revised calibration may test process improvement, but it does not erase an integrity failure.
+7. Register only real participants who consent to the stored disclosures. Keep them inactive until their evidence and calibration are checked.
+8. After activation, create hash-bound assignments and separate blinded reviewer kits. Use an unassigned qualified adjudicator for disagreements.
 """
         self._write_json(destination / "requirements.json", requirements)
         self._write_json(
             destination / "reviewer-registration.template.json", registration
         )
+        self._write_csv(destination / "review-inventory.csv", inventory_rows)
+        self._write_text(destination / "RECRUITMENT_CALL.md", recruitment_call)
+        self._write_text(destination / "QUALIFICATION_RUBRIC.md", qualification_rubric)
+        self._write_text(destination / "CALIBRATION_PLAN.md", calibration_plan)
         self._write_text(destination / "README.md", readme)
         return {
             "status": "reviewer_recruitment_kit_built",
@@ -260,6 +356,113 @@ Two qualified independent reviewers are mandatory for every preference pair and 
                 for path in sorted(destination.iterdir())
                 if path.is_file()
             },
+        }
+
+    def _build_review_inventory(self, queue_path: Path) -> list[dict[str, object]]:
+        queue = load_json(queue_path)
+        candidate_locations = self._candidate_locations()
+        language_review_statuses = self._candidate_language_review_statuses()
+        packet_locations = self._jsonl_locations(
+            Path("data/pilot/candidate_review_packets.jsonl")
+        )
+        rows: list[dict[str, object]] = []
+        for split in ("sft", "preferences", "evals"):
+            for item in queue.get(split, []):
+                item_id = str(item.get("item_id", ""))
+                category = normalize_review_category(item.get("category", ""))
+                qualification_lane = (
+                    category if category in SENSITIVE_REVIEW_CATEGORIES else "general"
+                )
+                required_reviewers = (
+                    2
+                    if split == "preferences"
+                    or qualification_lane in SENSITIVE_REVIEW_CATEGORIES
+                    else 1
+                )
+                candidate_file, candidate_line = candidate_locations.get(
+                    item_id,
+                    (f"data/pilot/candidates/{split}.jsonl", ""),
+                )
+                review_packet_file, review_packet_line = packet_locations.get(
+                    item_id,
+                    ("data/pilot/candidate_review_packets.jsonl", ""),
+                )
+                rows.append(
+                    {
+                        "item_id": item_id,
+                        "split": split,
+                        "category": category,
+                        "high_impact": str(bool(item.get("high_impact", False))).lower(),
+                        "required_independent_reviewers": required_reviewers,
+                        "qualification_lane": qualification_lane,
+                        "candidate_file": candidate_file,
+                        "candidate_line": candidate_line,
+                        "review_packet_file": review_packet_file,
+                        "review_packet_line": review_packet_line,
+                        "source_id": str(item.get("source_id", "")),
+                        "reference": str(item.get("reference", "")),
+                        "source_language_review": language_review_statuses.get(
+                            item_id, "required_if_language_claim_is_asserted"
+                        ),
+                        "review_focus": str(item.get("review_focus", "")),
+                        "review_status": "awaiting_independent_human_review",
+                    }
+                )
+        return rows
+
+    def _candidate_locations(self) -> dict[str, tuple[str, object]]:
+        locations: dict[str, tuple[str, object]] = {}
+        for split in ("sft", "preferences", "evals"):
+            relative_path = Path("data/pilot/candidates") / f"{split}.jsonl"
+            locations.update(self._jsonl_locations(relative_path))
+        return locations
+
+    def _candidate_language_review_statuses(self) -> dict[str, str]:
+        statuses: dict[str, str] = {}
+        for split in ("sft", "preferences", "evals"):
+            path = self.root / "data/pilot/candidates" / f"{split}.jsonl"
+            if not path.is_file():
+                continue
+            for record in self._read_jsonl(path):
+                item_id = str(record.get("item_id", ""))
+                notes = [
+                    note.strip().casefold()
+                    for note in self._nested_string_values(record, "language_notes")
+                ]
+                if not item_id:
+                    continue
+                if notes and all(
+                    "no source-language conclusion is asserted" in note for note in notes
+                ):
+                    statuses[item_id] = "not_required_no_language_claim_asserted"
+                elif notes:
+                    statuses[item_id] = "required_language_claim_asserted"
+                else:
+                    statuses[item_id] = "required_if_language_claim_is_asserted"
+        return statuses
+
+    @classmethod
+    def _nested_string_values(cls, value: object, key: str) -> list[str]:
+        if isinstance(value, dict):
+            found = [str(value[key])] if isinstance(value.get(key), str) else []
+            for nested in value.values():
+                found.extend(cls._nested_string_values(nested, key))
+            return found
+        if isinstance(value, list):
+            found = []
+            for nested in value:
+                found.extend(cls._nested_string_values(nested, key))
+            return found
+        return []
+
+    def _jsonl_locations(self, relative_path: Path) -> dict[str, tuple[str, object]]:
+        path = self.root / relative_path
+        if not path.is_file():
+            return {}
+        return {
+            str(record["item_id"]): (relative_path.as_posix(), line_number)
+            for line_number, record in enumerate(self._read_jsonl(path), 1)
+            if record.get("item_id")
         }
 
     def export_assigned_kits(
@@ -416,6 +619,16 @@ Two qualified independent reviewers are mandatory for every preference pair and 
             handle.write(value)
             temporary = Path(handle.name)
         temporary.replace(path)
+
+    @classmethod
+    def _write_csv(cls, path: Path, rows: list[dict[str, object]]) -> None:
+        if not rows:
+            raise ValueError("review inventory cannot be empty")
+        buffer = io.StringIO(newline="")
+        writer = csv.DictWriter(buffer, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+        cls._write_text(path, buffer.getvalue())
 
     @classmethod
     def _write_json(cls, path: Path, value: Any) -> None:
