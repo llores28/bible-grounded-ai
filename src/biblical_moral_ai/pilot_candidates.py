@@ -18,7 +18,7 @@ from .decisions import strongest_decision
 from .evidence_store import EvidenceStore, file_sha256
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
-from .registry import load_commandment_rules, load_json
+from .registry import load_commandment_rules, load_deception_taxonomy, load_json
 from .reviewers import ReviewerWorkflow, is_active_reviewer, reviewer_is_qualified
 from .schemas import MoralAnswer, PipelineDecision
 
@@ -79,7 +79,8 @@ class PilotCandidateWorkflow:
         corpus_payload = load_json(corpus_path)
         pipeline = InferenceReviewPipeline(
             commandment_policy=CommandmentPolicyEngine(
-                load_commandment_rules(self.root / "configs/commandments.json")
+                load_commandment_rules(self.root / "configs/commandments.json"),
+                load_deception_taxonomy(self.root / "configs/deception_taxonomy.json"),
             ),
             citation_verifier=CitationVerifier(
                 corpus_payload.get("sources", corpus_payload)
@@ -437,7 +438,8 @@ class PilotCandidateWorkflow:
         corpus_payload = load_json(self.root / "data/index/citation_corpus.json")
         pipeline = InferenceReviewPipeline(
             commandment_policy=CommandmentPolicyEngine(
-                load_commandment_rules(self.root / "configs/commandments.json")
+                load_commandment_rules(self.root / "configs/commandments.json"),
+                load_deception_taxonomy(self.root / "configs/deception_taxonomy.json"),
             ),
             citation_verifier=CitationVerifier(
                 corpus_payload.get("sources", corpus_payload)

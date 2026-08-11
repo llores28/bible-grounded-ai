@@ -10,7 +10,13 @@ from typing import Any
 from .arithmetic import verify_equation
 from .canon import CanonRegistry
 from .evidence_store import file_sha256
-from .registry import RegistryError, load_commandment_rules, load_json, load_prophetic_rules
+from .registry import (
+    RegistryError,
+    load_commandment_rules,
+    load_deception_taxonomy,
+    load_json,
+    load_prophetic_rules,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +47,7 @@ _REQUIRED_FILES = (
     "LICENSES.md",
     "PROPHETIC_RULE_REGISTRY.yaml",
     "configs/commandments.json",
+    "configs/deception_taxonomy.json",
     "configs/canon.json",
     "configs/data/source_registry.json",
     "configs/data/source_packages.json",
@@ -54,6 +61,7 @@ _REQUIRED_FILES = (
     "schemas/pilot-candidate-envelope.schema.json",
     "schemas/pilot-review.schema.json",
     "schemas/pilot-adjudication.schema.json",
+    "schemas/deception-taxonomy.schema.json",
     "schemas/reviewer-registry.schema.json",
     "evals/sealed/manifest.json",
 )
@@ -92,6 +100,21 @@ class ProjectPreflight:
             )
         except (RegistryError, ValueError) as exc:
             checks.append(PreflightCheck("commandment_registry", False, str(exc)))
+
+        try:
+            deception_types = load_deception_taxonomy(
+                self.root / "configs/deception_taxonomy.json"
+            )
+            high_impact = sum(bool(item["high_impact"]) for item in deception_types.values())
+            checks.append(
+                PreflightCheck(
+                    "deception_taxonomy",
+                    "other_intentional_false_impression" in deception_types,
+                    f"{len(deception_types)} operational types loaded; {high_impact} high-impact",
+                )
+            )
+        except (RegistryError, ValueError, KeyError, TypeError) as exc:
+            checks.append(PreflightCheck("deception_taxonomy", False, str(exc)))
 
         try:
             canon = CanonRegistry.load(self.root / "configs/canon.json")

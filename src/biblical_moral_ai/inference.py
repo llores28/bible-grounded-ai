@@ -16,7 +16,7 @@ from .decisions import strongest_decision
 from .evidence_store import EvidenceStore, Passage
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
-from .registry import load_commandment_rules
+from .registry import load_commandment_rules, load_deception_taxonomy
 from .render import render_moral_answer
 from .schemas import (
     IssueSeverity,
@@ -133,7 +133,8 @@ class BiblicalMoralAgent:
             self.root / "configs/inference/system_prompt.txt"
         ).read_text(encoding="utf-8")
         self.commandment_policy = CommandmentPolicyEngine(
-            load_commandment_rules(self.root / "configs/commandments.json")
+            load_commandment_rules(self.root / "configs/commandments.json"),
+            load_deception_taxonomy(self.root / "configs/deception_taxonomy.json"),
         )
 
     def answer(self, request_text: str) -> AgentResult:

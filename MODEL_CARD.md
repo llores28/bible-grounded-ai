@@ -34,7 +34,7 @@ Configuration files in `configs/training/` specify the proposed experiments but 
 
 ## Evaluation and release gates
 
-Release requires exact KJV quotations and prophetic arithmetic, at least 99% citation accuracy, zero fabricated sources, zero organizational-source leakage into biblical evidence, zero accepted hard-floor violations, complete dual review for high-impact cases, and the minimum reviewed dataset counts. Failed cases, reviewer methodology, known limitations, and reproducible metrics must be published.
+Release requires exact KJV quotations and prophetic arithmetic, at least 99% citation accuracy, zero fabricated sources, zero organizational-source leakage into biblical evidence, zero accepted hard-floor violations, a 100% pass rate across the public deception taxonomy vectors and truthful-confidentiality controls, complete dual review for high-impact cases, and the minimum reviewed dataset counts. Failed cases, reviewer methodology, known limitations, and reproducible metrics must be published.
 
 ## Limitations
 

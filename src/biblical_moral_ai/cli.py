@@ -20,7 +20,7 @@ from .pilot_seed import PilotSeedBuilder
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import ProjectPreflight
-from .registry import load_commandment_rules, load_json
+from .registry import load_commandment_rules, load_deception_taxonomy, load_json
 from .release import ReleaseGateEvaluator, ReleaseMetrics
 from .review_ledger import ReviewLedgerValidator
 from .reviewers import ReviewerWorkflow
@@ -37,7 +37,8 @@ def _pipeline(root: Path, corpus_path: Path) -> InferenceReviewPipeline:
     corpora = corpus_payload.get("sources", corpus_payload)
     return InferenceReviewPipeline(
         commandment_policy=CommandmentPolicyEngine(
-            load_commandment_rules(root / "configs/commandments.json")
+            load_commandment_rules(root / "configs/commandments.json"),
+            load_deception_taxonomy(root / "configs/deception_taxonomy.json"),
         ),
         citation_verifier=CitationVerifier(corpora),
         organizational_source_ids=corpus_payload.get("organizational_source_ids", []),

@@ -24,6 +24,7 @@ The system is not intended to claim divine authority, moral consciousness, or re
 - [`schemas/`](schemas/) defines the machine-readable answer, review, corpus, preference, and release contracts.
 - [`configs/training/`](configs/training/) contains pinned Apertus 8B QLoRA SFT and DPO experiment configurations.
 - [`configs/data/source_packages.json`](configs/data/source_packages.json) and [`configs/data/lexicon_packages.json`](configs/data/lexicon_packages.json) lock the approved Scripture, morphology, Hebrew/Aramaic dictionary, and Koine Greek dictionary inputs.
+- [`configs/deception_taxonomy.json`](configs/deception_taxonomy.json) defines 28 operational deception categories, including a catch-all for novel intentional false impressions, and is enforced by the inference and candidate-review policy engine.
 - [`evals/`](evals/) contains public adversarial cases, a sealed-set custody contract, and release-metric templates.
 - [`docs/Apertus_Bible_Grounded_AI_Master_Plan.md`](docs/Apertus_Bible_Grounded_AI_Master_Plan.md) is the v1.3 technical roadmap; [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) is the fail-closed CUDA training procedure.
 - [`docs/PILOT_REVIEW_WORKFLOW.md`](docs/PILOT_REVIEW_WORKFLOW.md) defines the 50/20/25 authoring queue, blinded human review ledger, revision/adjudication rules, and CPU validation receipt.

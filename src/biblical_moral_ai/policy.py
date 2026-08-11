@@ -28,7 +28,23 @@ _INTERPERSONAL_TRIGGERS: dict[int, tuple[str, ...]] = {
     6: ("murder", "kill", "shoot", "violence", "self-defense", "war", "police"),
     7: ("adultery", "affair", "infidelity", "sexual", "marriage", "spouse"),
     8: ("steal", "theft", "credentials", "password", "property", "without permission"),
-    9: ("lie", "deceive", "false witness", "fabricate", "citation", "confidential"),
+    9: (
+        "lie",
+        "deceive",
+        "false witness",
+        "fabricate",
+        "citation",
+        "confidential",
+        "mislead",
+        "fraud",
+        "impersonate",
+        "forge",
+        "deepfake",
+        "phishing",
+        "half-truth",
+        "omission",
+        "cover up",
+    ),
     10: ("covet", "greed", "envy", "jealous", "hidden motive"),
 }
 
@@ -91,10 +107,44 @@ def _contains_trigger(text: str, trigger: str) -> bool:
 class CommandmentPolicyEngine:
     """Verify an answer's explicit assessments and recommendation language."""
 
-    def __init__(self, rules: Mapping[int, CommandmentRule]) -> None:
+    def __init__(
+        self,
+        rules: Mapping[int, CommandmentRule],
+        deception_types: Mapping[str, Mapping[str, object]],
+    ) -> None:
         if set(rules) != set(range(1, 11)):
             raise ValueError("policy engine requires exactly commandments 1-10")
+        if len(deception_types) < 20 or "other_intentional_false_impression" not in deception_types:
+            raise ValueError("policy engine requires the comprehensive deception taxonomy")
         self.rules = dict(rules)
+        self.deception_patterns: tuple[tuple[str, str, re.Pattern[str]], ...] = tuple(
+            (
+                type_id,
+                str(item["label"]),
+                self._deception_recommendation_pattern(item["recommendation_terms"]),
+            )
+            for type_id, item in deception_types.items()
+        )
+
+    @staticmethod
+    def _deception_recommendation_pattern(terms: object) -> re.Pattern[str]:
+        if not isinstance(terms, (list, tuple)) or not terms:
+            raise ValueError("every deception type requires recommendation terms")
+        alternatives = "|".join(
+            sorted((re.escape(str(term)) for term in terms), key=len, reverse=True)
+        )
+        positive_recommendation = (
+            r"(?:^|[.!?]\s+)"
+            r"(?:you\s+(?:should|must|need\s+to)|i\s+recommend|"
+            r"it\s+is\s+(?:right|acceptable)\s+to|the\s+best\s+option\s+is\s+to|"
+            r"go\s+ahead\s+and)\s+"
+            r"(?!(?:not|never|avoid|refuse|decline)\b)"
+        )
+        return re.compile(
+            positive_recommendation
+            + rf"(?:[^.!?]{{0,80}}\s+)?(?:{alternatives})(?=$|[\s,.;:!?])",
+            re.IGNORECASE | re.MULTILINE,
+        )
 
     def check(self, answer: MoralAnswer) -> VerificationReport:
         issues: list[VerificationIssue] = []
@@ -204,6 +254,18 @@ class CommandmentPolicyEngine:
                 )
 
         recommendation_text = " ".join((answer.conclusion, *answer.practical_options))
+        for type_id, label, pattern in self.deception_patterns:
+            if pattern.search(recommendation_text):
+                issues.append(
+                    VerificationIssue(
+                        code="CMD_DECEPTION_RECOMMENDATION",
+                        message=f"Recommendation endorses prohibited deception: {label} ({type_id}).",
+                        decision=PipelineDecision.REFUSE,
+                        severity=IssueSeverity.CRITICAL,
+                        field_path="conclusion_or_practical_options",
+                        commandment=9,
+                    )
+                )
         for number, pattern in _FORBIDDEN_RECOMMENDATIONS:
             if pattern.search(recommendation_text):
                 issues.append(
@@ -232,6 +294,9 @@ class CommandmentPolicyEngine:
             decision=strongest_decision(issues),
             issues=tuple(issues),
             checks={
-                "hard_floor_assessed": not any(i.code == "CMD_HARD_FLOOR_MISSING" for i in issues)
+                "hard_floor_assessed": not any(i.code == "CMD_HARD_FLOOR_MISSING" for i in issues),
+                "deception_taxonomy_enforced": not any(
+                    i.code == "CMD_DECEPTION_RECOMMENDATION" for i in issues
+                ),
             },
         )

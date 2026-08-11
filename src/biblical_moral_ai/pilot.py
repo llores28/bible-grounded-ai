@@ -15,7 +15,7 @@ from .pilot_candidates import PilotCandidateWorkflow
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import PreflightCheck, PreflightReport, ProjectPreflight
-from .registry import load_commandment_rules, load_json
+from .registry import load_commandment_rules, load_deception_taxonomy, load_json
 from .review_ledger import ReviewLedgerValidator
 from .reviewers import ReviewerWorkflow
 
@@ -103,7 +103,8 @@ class PilotWorkflow:
             corpora = corpus_payload.get("sources", corpus_payload)
             pipeline = InferenceReviewPipeline(
                 commandment_policy=CommandmentPolicyEngine(
-                    load_commandment_rules(self.root / "configs/commandments.json")
+                    load_commandment_rules(self.root / "configs/commandments.json"),
+                    load_deception_taxonomy(self.root / "configs/deception_taxonomy.json"),
                 ),
                 citation_verifier=CitationVerifier(corpora),
                 organizational_source_ids=corpus_payload.get(

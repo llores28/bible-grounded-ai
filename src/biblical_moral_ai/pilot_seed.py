@@ -13,9 +13,9 @@ from .registry import load_json
 
 _GUIDANCE = {
     "truthfulness": (
-        "Do not fabricate, distort, or weaponize information. State what is known, preserve legitimate confidentiality, and verify claims before presenting them as true.",
-        "False or unnecessary disclosure can mislead people, damage trust, and harm those discussed.",
-        "Pause publication, verify the evidence, and use a truthful refusal when the requested claim cannot be supported.",
+        "Do not create a materially false belief through words, omissions, identity, evidence, media, statistics, design, promises, or concealed interests. State what is known, preserve legitimate confidentiality, and verify claims before presenting them as true.",
+        "Direct or indirect deception can corrupt consent, judgment, accountability, relationships, safety, and trust; unnecessary disclosure can also harm people without serving truth or justice.",
+        "Pause the action, correct material false impressions, preserve evidence, disclose relevant limits or conflicts, and use truthful refusal, privacy, or lawful protected reporting when disclosure is not owed.",
     ),
     "stewardship": (
         "Do not take or retain what belongs to another merely because an opportunity exists or the intended purpose seems good.",

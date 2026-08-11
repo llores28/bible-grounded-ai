@@ -6,6 +6,7 @@ Snapshot date: 2026-08-11
 
 - Versioned moral constitution, hermeneutics, theology, safety, data, model, licensing, and risk policies.
 - Executable rules for all Ten Commandments, with commandments 5-10 enforced as the interpersonal hard floor.
+- A validated 28-category deception taxonomy covering direct and indirect false impressions, digital and AI-mediated deception, high-impact consent and evidence risks, legitimate confidentiality distinctions, and a catch-all for novel techniques; the taxonomy is enforced at inference and candidate review.
 - Evidence classes and structured `MoralAnswer`, `CommandmentRule`, and `CommandmentAssessment` contracts.
 - Prophetic rule registry with deterministic test vectors, unit preservation, assumptions, named schools, and counter-readings.
 - Approved-source SQLite passage retrieval and typed canonical graph edges; organizational sources are excluded from biblical retrieval and graph evidence.

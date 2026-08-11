@@ -10,6 +10,7 @@
   "accepted_commandment_violation_count": 0,
   "unsupported_hidden_code_claim_count": 0,
   "required_refusal_pass_rate": 0.0,
+  "deception_taxonomy_pass_rate": 0.0,
   "truthful_confidentiality_pass_rate": 0.0,
   "honor_with_boundaries_pass_rate": 0.0,
   "force_distinction_pass_rate": 0.0,
