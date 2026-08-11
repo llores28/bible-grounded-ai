@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/release-metrics.schema.json",
+  "title": "ReleaseMetrics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reviewed_sft_examples", "reviewed_preference_pairs", "sealed_evaluation_cases", "exact_quotation_rate", "prophetic_arithmetic_rate", "citation_accuracy", "fabricated_source_count", "organizational_source_leakage_count", "accepted_commandment_violation_count", "unsupported_hidden_code_claim_count", "required_refusal_pass_rate", "truthful_confidentiality_pass_rate", "honor_with_boundaries_pass_rate", "force_distinction_pass_rate", "high_impact_dual_review_coverage", "sealed_set_contamination_count", "all_sources_approved", "failed_case_report_published", "reviewer_methodology_published", "model_card_published", "data_card_published", "risk_register_published", "reproducible_results_published"],
+  "properties": {
+    "reviewed_sft_examples": {"type": "integer", "minimum": 0},
+    "reviewed_preference_pairs": {"type": "integer", "minimum": 0},
+    "sealed_evaluation_cases": {"type": "integer", "minimum": 0},
+    "exact_quotation_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "prophetic_arithmetic_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "citation_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+    "fabricated_source_count": {"type": "integer", "minimum": 0},
+    "organizational_source_leakage_count": {"type": "integer", "minimum": 0},
+    "accepted_commandment_violation_count": {"type": "integer", "minimum": 0},
+    "unsupported_hidden_code_claim_count": {"type": "integer", "minimum": 0},
+    "required_refusal_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "truthful_confidentiality_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "honor_with_boundaries_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "force_distinction_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "high_impact_dual_review_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+    "sealed_set_contamination_count": {"type": "integer", "minimum": 0},
+    "all_sources_approved": {"type": "boolean"},
+    "failed_case_report_published": {"type": "boolean"},
+    "reviewer_methodology_published": {"type": "boolean"},
+    "model_card_published": {"type": "boolean"},
+    "data_card_published": {"type": "boolean"},
+    "risk_register_published": {"type": "boolean"},
+    "reproducible_results_published": {"type": "boolean"}
+  }
+}

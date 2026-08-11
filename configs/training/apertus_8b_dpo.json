@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "stage": "dpo",
+  "model": {
+    "base_model_id": "swiss-ai/Apertus-8B-Instruct-2509",
+    "base_revision": "b946d40447b2b597999b9c86d44bee0b452c919f",
+    "sft_adapter_path": "artifacts/apertus-8b-biblical-moral-sft",
+    "trust_remote_code": false
+  },
+  "dataset": {
+    "train_path": "data/processed/preference_train.jsonl",
+    "eval_path": "data/processed/preference_validation.jsonl",
+    "minimum_accepted_train_pairs": 1000,
+    "prompt_field": "prompt",
+    "chosen_field": "chosen",
+    "rejected_field": "rejected"
+  },
+  "quantization": {
+    "load_in_4bit": true,
+    "bnb_4bit_quant_type": "nf4",
+    "bnb_4bit_use_double_quant": true,
+    "bnb_4bit_compute_dtype": "bfloat16"
+  },
+  "training": {
+    "output_dir": "artifacts/apertus-8b-biblical-moral-dpo",
+    "max_length": 4096,
+    "beta": 0.1,
+    "loss_type": "sigmoid",
+    "num_train_epochs": 1,
+    "per_device_train_batch_size": 1,
+    "per_device_eval_batch_size": 1,
+    "gradient_accumulation_steps": 16,
+    "gradient_checkpointing": true,
+    "learning_rate": 0.00001,
+    "lr_scheduler_type": "cosine",
+    "warmup_ratio": 0.05,
+    "bf16": true,
+    "logging_steps": 5,
+    "eval_strategy": "steps",
+    "eval_steps": 100,
+    "save_steps": 100,
+    "save_total_limit": 3,
+    "seed": 20260811,
+    "report_to": "none"
+  },
+  "gates": {
+    "sft_adapter_evaluation_required": true,
+    "project_preflight_required": true,
+    "cuda_required": true,
+    "independent_preference_review_required": true,
+    "denominational_affiliation_cannot_be_a_preference_reason": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "status": "review_not_started",
+  "accepted_edge_count": 0,
+  "edge_artifact_path": null,
+  "sha256": null,
+  "allowed_edge_types": ["explicit_quotation", "formula_introduction", "fulfillment_claim", "allusion", "type_antitype", "symbol_defined_by_text", "shared_duration", "lexical_parallel", "thematic_parallel", "proposed_historical_fulfillment"],
+  "graph_edges_are_evidence_by_themselves": false
+}
+

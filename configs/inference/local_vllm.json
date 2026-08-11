@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "backend": "openai_compatible_local",
+  "endpoint": "http://127.0.0.1:8000/v1/chat/completions",
+  "model": "swiss-ai/Apertus-8B-Instruct-2509",
+  "allow_remote": false,
+  "temperature": 0,
+  "seed": 20260811,
+  "retrieval_limit": 12,
+  "graph_expansion_limit": 8,
+  "max_corrections": 1,
+  "release_only_after_verification": true
+}

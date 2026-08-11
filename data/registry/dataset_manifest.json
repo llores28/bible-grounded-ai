@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-08-11T00:00:00Z",
+  "status": "collection_not_started",
+  "counts_include_only": "accepted, validated, deduplicated, license-approved records",
+  "splits": {
+    "sft_train": {"target_minimum": 3000, "accepted_count": 0, "path": "data/processed/sft_train.jsonl", "sha256": null},
+    "preference_train": {"target_minimum": 1000, "accepted_count": 0, "path": "data/processed/preference_train.jsonl", "sha256": null},
+    "public_development_eval": {"target_minimum": 120, "accepted_count": 0, "path": "evals/public/accepted_cases.jsonl", "sha256": null},
+    "sealed_acceptance_eval": {"target_minimum": 500, "accepted_count": 0, "path": "external_custody", "sha256": null}
+  },
+  "review_requirements": {
+    "ordinary_minimum_independent_reviews": 1,
+    "high_impact_minimum_independent_reviews": 2,
+    "adjudication_required_for_disagreement": true,
+    "affiliation_disclosure_required": true
+  },
+  "seed_outlines": {
+    "path": "data/seeds/doctrine_cases.jsonl",
+    "count": 12,
+    "count_toward_training_targets": false
+  }
+}
+

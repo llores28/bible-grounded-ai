@@ -9,7 +9,7 @@ const budget = [
 
 const phases = [
   ["01", "Govern", "Publish the moral constitution, licensing register, test methodology and project boundaries."],
-  ["02", "Establish a baseline", "Measure the untouched Apertus 1.5B model before adapting it to biblical-language tasks."],
+  ["02", "Establish a baseline", "Measure the pinned Apertus 8B text model as the primary interpreter; use smaller checkpoints only for routing or retrieval if they pass their narrower gates."],
   ["03", "Train carefully", "Run memory-efficient Hebrew, Aramaic, Greek and Latin experiments on one RTX 5090."],
   ["04", "Ground every claim", "Connect exact Scripture and manuscript transcriptions through citation-verified retrieval."],
   ["05", "Review openly", "Invite qualified reviewers, publish failures and report what the evidence actually supports."],
@@ -72,7 +72,7 @@ export default function Home() {
           </div>
           <div className="status-card">
             <span className="status-dot" />
-            <div><small>Current stage</small><strong>Foundation &amp; fundraising</strong></div>
+            <div><small>Current stage</small><strong>Policy core built · data review next</strong></div>
           </div>
         </div>
       </section>
@@ -148,7 +148,7 @@ export default function Home() {
         <h2>Trust must be <em>earned in public.</em></h2>
         <div className="commitment-grid">
           <article><span>01</span><h3>Legal, traceable data</h3><p>Use public-domain, open-license or properly licensed material with dataset-level provenance.</p></article>
-          <article><span>02</span><h3>Honest interpretation</h3><p>Separate explicit teaching, strong biblical inference and tradition-specific conclusions—including SDA perspectives.</p></article>
+          <article><span>02</span><h3>Honest interpretation</h3><p>Separate explicit text, multi-passage biblical synthesis, historical interpretation and factual organizational alignment.</p></article>
           <article><span>03</span><h3>Verified source claims</h3><p>Require retrieval verification for Scripture, manuscript and original-language claims.</p></article>
           <article><span>04</span><h3>Published limitations</h3><p>Report failed tests, known weaknesses and safety boundaries—not only successful demonstrations.</p></article>
         </div>
@@ -159,7 +159,7 @@ export default function Home() {
         <div className="faq-list">
           <details open><summary>Is this AI supposed to speak for God?<span>+</span></summary><p>No. It is a human-designed research system that applies a documented biblical framework. It will remain capable of error and its outputs must be verified.</p></details>
           <details><summary>Why not use an existing chatbot?<span>+</span></summary><p>This project emphasizes biblical-language testing, source provenance, manuscript-aware retrieval, interpretation labels and public evaluation.</p></details>
-          <details><summary>Is this project only for Seventh-day Adventists?<span>+</span></summary><p>No. Broad biblical evidence will be distinguished from denominational interpretation. SDA perspectives will be identified transparently rather than presented as the only Christian reading.</p></details>
+          <details><summary>Is this project only for Seventh-day Adventists?<span>+</span></summary><p>No. Scripture is evaluated independently of denominational identity. Official church documents can verify what an organization teaches, but they do not replace biblical evidence or determine whether a doctrine is true.</p></details>
           <details><summary>Are contributions tax deductible?<span>+</span></summary><p>The project will not represent contributions as tax deductible unless a qualified fiscal sponsor or tax-exempt organization formally receives them. The approved campaign language will be posted before launch.</p></details>
         </div>
       </section>

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/moral-answer.schema.json",
+  "title": "MoralAnswer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_text", "known_facts", "missing_information", "commandment_assessments", "evidence", "moral_duties", "affected_people", "potential_harms", "conclusion", "confidence", "alternatives", "practical_options", "human_referral", "organizational_alignment"],
+  "$defs": {
+    "nonEmptyStrings": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commandment", "verdict", "rationale", "evidence_ids", "affected_people"],
+      "properties": {
+        "commandment": {"type": "integer", "minimum": 1, "maximum": 10},
+        "verdict": {"enum": ["compliant", "violation", "uncertain", "not_applicable"]},
+        "rationale": {"type": "string", "minLength": 1},
+        "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "affected_people": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "remediation": {"type": ["string", "null"]}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "evidence_class", "source_id", "reference", "claim", "reviewer_status", "confidence"],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "evidence_class": {"enum": ["explicit_text", "canonical_synthesis", "contextual_inference", "named_historical_interpretation", "wisdom_judgment", "speculative_hypothesis"]},
+        "source_id": {"type": "string", "minLength": 1},
+        "reference": {"type": "string", "minLength": 1},
+        "claim": {"type": "string", "minLength": 1},
+        "quotation": {"type": ["string", "null"]},
+        "immediate_context": {"type": "string"},
+        "language_notes": {"type": "string"},
+        "assumptions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "reviewer_status": {"enum": ["unreviewed", "pending", "approved", "rejected", "disputed"]},
+        "confidence": {"enum": ["high", "moderate", "low"]}
+      }
+    },
+    "alignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["organization", "official_document", "statement", "alignment", "source_url", "evidence_weight"],
+      "properties": {
+        "organization": {"type": "string", "minLength": 1},
+        "official_document": {"type": "string", "minLength": 1},
+        "statement": {"type": "string", "minLength": 1},
+        "alignment": {"type": "string", "minLength": 1},
+        "source_url": {"type": "string", "format": "uri"},
+        "evidence_weight": {"const": 0.0}
+      }
+    }
+  },
+  "properties": {
+    "answer_id": {"type": "string"},
+    "request_text": {"type": "string", "minLength": 1},
+    "known_facts": {"$ref": "#/$defs/nonEmptyStrings"},
+    "missing_information": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "commandment_assessments": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/assessment"},
+      "allOf": [
+        {"contains": {"properties": {"commandment": {"const": 5}}, "required": ["commandment"]}},
+        {"contains": {"properties": {"commandment": {"const": 6}}, "required": ["commandment"]}},
+        {"contains": {"properties": {"commandment": {"const": 7}}, "required": ["commandment"]}},
+        {"contains": {"properties": {"commandment": {"const": 8}}, "required": ["commandment"]}},
+        {"contains": {"properties": {"commandment": {"const": 9}}, "required": ["commandment"]}},
+        {"contains": {"properties": {"commandment": {"const": 10}}, "required": ["commandment"]}}
+      ]
+    },
+    "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+    "moral_duties": {"$ref": "#/$defs/nonEmptyStrings"},
+    "affected_people": {"$ref": "#/$defs/nonEmptyStrings"},
+    "potential_harms": {"$ref": "#/$defs/nonEmptyStrings"},
+    "conclusion": {"type": "string", "minLength": 1},
+    "confidence": {"enum": ["high", "moderate", "low"]},
+    "alternatives": {"$ref": "#/$defs/nonEmptyStrings"},
+    "practical_options": {"$ref": "#/$defs/nonEmptyStrings"},
+    "human_referral": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "organizational_alignment": {"type": "array", "items": {"$ref": "#/$defs/alignment"}}
+  }
+}
+

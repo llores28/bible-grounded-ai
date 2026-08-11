@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "reviewed_on": "2026-08-11",
+  "approval_rule": "Only status=approved artifacts with an exact revision and sha256 may be ingested.",
+  "sources": [
+    {
+      "source_id": "KJV_EBIBLE_1769",
+      "role": "primary_english_display",
+      "title": "King James (Authorized) Version, standardized 1769 text",
+      "upstream_url": "https://ebible.org/eng-kjv2006/",
+      "license_claim": "Public domain outside the United Kingdom; UK restrictions noted by distributor",
+      "required_attribution": "Courtesy of Crosswire Bible Society and eBible.org",
+      "revision": null,
+      "sha256": null,
+      "status": "pending_legal_review",
+      "blockers": ["Select exact source artifact", "Record digest", "Approve deployment jurisdictions and attribution"]
+    },
+    {
+      "source_id": "OSHB_WLC_MORPHHB",
+      "role": "operational_hebrew_aramaic",
+      "title": "Open Scriptures Hebrew Bible following the Westminster Leningrad Codex",
+      "upstream_url": "https://github.com/openscriptures/morphhb",
+      "license_claim": "WLC text public domain; lemma and morphology data CC BY 4.0 per upstream README",
+      "required_attribution": "Open Scriptures Hebrew Bible Project",
+      "revision": null,
+      "sha256": null,
+      "status": "pending_legal_review",
+      "blockers": ["Pin release or commit", "Record artifact digest", "Confirm attribution bundle and model-training treatment"]
+    },
+    {
+      "source_id": "SBLGNT_FAITHLIFE",
+      "role": "controlling_new_testament_greek",
+      "title": "SBL Greek New Testament",
+      "upstream_url": "https://github.com/LogosBible/SBLGNT",
+      "license_claim": "CC BY 4.0 per upstream repository",
+      "required_attribution": "Society of Biblical Literature and Logos Bible Software",
+      "revision": null,
+      "sha256": null,
+      "status": "pending_legal_review",
+      "blockers": ["Pin revision", "Record digest", "Approve attribution and model-training treatment"]
+    },
+    {
+      "source_id": "MORPHGNT_SBLGNT",
+      "role": "operational_greek_morphology",
+      "title": "MorphGNT analysis of SBLGNT",
+      "upstream_url": "https://github.com/morphgnt/sblgnt",
+      "license_claim": "Pending exact component-level verification",
+      "required_attribution": null,
+      "revision": null,
+      "sha256": null,
+      "status": "pending_legal_review",
+      "blockers": ["Verify text and morphology licenses separately", "Pin revision", "Record digest and attribution"]
+    },
+    {
+      "source_id": "TEXTUS_RECEPTUS_CANDIDATE",
+      "role": "comparative_greek_witness",
+      "title": "Textus Receptus edition to be selected",
+      "upstream_url": null,
+      "license_claim": null,
+      "required_attribution": null,
+      "revision": null,
+      "sha256": null,
+      "status": "candidate",
+      "blockers": ["Select edition and source", "Complete textual and legal review"]
+    },
+    {
+      "source_id": "SEPTUAGINT_CANDIDATE",
+      "role": "comparative_greek_old_testament_witness",
+      "title": "Septuagint edition to be selected",
+      "upstream_url": null,
+      "license_claim": null,
+      "required_attribution": null,
+      "revision": null,
+      "sha256": null,
+      "status": "candidate",
+      "blockers": ["Select edition and source", "Complete textual and legal review"]
+    },
+    {
+      "source_id": "VULGATE_CANDIDATE",
+      "role": "comparative_latin_witness",
+      "title": "Vulgate edition to be selected",
+      "upstream_url": null,
+      "license_claim": null,
+      "required_attribution": null,
+      "revision": null,
+      "sha256": null,
+      "status": "candidate",
+      "blockers": ["Select edition and source", "Complete textual and legal review"]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/commandment-rule.schema.json",
+  "title": "CommandmentRule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["number", "title", "scope", "hard_floor", "applies_when", "requirements", "prohibitions", "qualifications", "anchor_passages"],
+  "properties": {
+    "number": {"type": "integer", "minimum": 1, "maximum": 10},
+    "title": {"type": "string", "minLength": 1},
+    "scope": {"enum": ["duty_to_god", "interpersonal_floor"]},
+    "hard_floor": {"type": "boolean"},
+    "applies_when": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "requirements": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "prohibitions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "qualifications": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "anchor_passages": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"number": {"minimum": 5}}, "required": ["number"]},
+      "then": {"properties": {"scope": {"const": "interpersonal_floor"}, "hard_floor": {"const": true}}},
+      "else": {"properties": {"scope": {"const": "duty_to_god"}, "hard_floor": {"const": false}}}
+    }
+  ]
+}
+

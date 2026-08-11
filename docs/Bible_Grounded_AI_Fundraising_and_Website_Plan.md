@@ -1,7 +1,7 @@
 # Bible-Grounded AI Fundraising and Google Sites Plan
 
 **Project:** Bible-grounded moral reasoning and biblical scholarship AI  
-**Initial model:** Apertus v1.1 1.5B Base  
+**Initial model target:** Pinned Apertus 8B Instruct text checkpoint; smaller models may serve routing or retrieval roles after measured gates
 **Development hardware:** One NVIDIA RTX 5090 32 GB workstation  
 **Prepared for:** Lannys Lores  
 **Version:** 1.0 — August 2026
@@ -167,7 +167,7 @@ We are developing an open and carefully evaluated research system that can study
 This project will not claim that AI is conscious, divinely inspired, or able to replace Scripture, prayer, pastoral care, professional advice or human judgment.
 
 **Current milestone block:**  
-Our first goal is a reproducible Apertus 1.5B proof of concept developed on an RTX 5090 workstation, supported by retrieval-backed citations and independent language and theological review.
+Our first goal is a reproducible Apertus proof of concept developed on an RTX 5090 workstation. The pinned Apertus 8B Instruct text checkpoint is the primary interpretation target. Smaller checkpoints may be evaluated for routing or retrieval roles, and the newer multimodal checkpoint may be evaluated later, but every role remains subject to documented reasoning, citation, CUDA, and safety gates supported by independent language and theological review.
 
 ### Why This Matters
 
@@ -201,7 +201,7 @@ Publish these commitments:
 - Use only public-domain, open-license or properly licensed training material.
 - Preserve dataset-level provenance and license records.
 - Separate explicit biblical teaching, strong biblical inference and tradition-specific interpretation.
-- Label Seventh-day Adventist interpretations transparently where relevant.
+- Derive doctrinal support from Scripture and label official denominational alignment separately; do not treat organizational statements as biblical evidence.
 - Never fabricate Hebrew, Aramaic, Greek or Latin text.
 - Require retrieval verification for manuscript and verse claims.
 - Treat medical, legal, financial, abuse and self-harm matters with appropriate professional and safety boundaries.
@@ -233,7 +233,7 @@ The project emphasizes source provenance, biblical-language testing, manuscript-
 No. It is intended to support study and structured reasoning, not replace spiritual leadership or qualified expertise.
 
 **Is the project only for Seventh-day Adventists?**  
-The core system will distinguish broad biblical evidence from denominational interpretation. SDA perspectives will be labeled rather than presented as if no other Christian interpretation exists.
+No. The core system will evaluate biblical evidence independently of denominational identity. Official SDA and other church documents may be used only to report accurately what those organizations teach; they will not substitute for Scripture, raise a doctrine's evidence score, or cause a multi-passage doctrine to be dismissed as merely denominational.
 
 **Are contributions tax deductible?**  
 Use only the answer that matches the chosen legal structure. For a personal campaign: “No representation is made that contributions are tax deductible. Consult your tax adviser.” For a fiscal sponsor: use the sponsor's approved language.
@@ -375,7 +375,7 @@ Publish material that demonstrates the work instead of repeatedly asking for mon
 3. Who owns the hardware, data, code, trained weights and donations?
 4. Which organization or individual will receive funds?
 5. Who can approve spending and verify monthly reports?
-6. Will the public identity be broadly Christian with an SDA interpretive layer, or explicitly SDA from the first page?
+6. Will the public identity state explicitly that the project is Bible-evidence-first and organizationally independent?
 7. Which three advisers can be approached first?
 8. What exact evidence will count as completing the $15,000 proof of concept?
 

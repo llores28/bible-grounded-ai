@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biblical-moral-ai"
+version = "0.1.0"
+description = "Auditable policy, data, training, and evaluation tools for biblical moral reasoning."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary until a repository license is selected" }
+authors = [{ name = "Bible-Grounded AI Initiative" }]
+dependencies = []
+
+[project.optional-dependencies]
+training = [
+  "accelerate>=1.10,<2",
+  "bitsandbytes>=0.46,<1; platform_system != 'Darwin'",
+  "datasets>=4,<5",
+  "peft>=0.17,<1",
+  "torch>=2.7,<3",
+  "transformers>=4.56,<5",
+  "trl>=0.23,<1",
+]
+dev = ["ruff>=0.12,<1"]
+
+[project.scripts]
+biblical-moral-ai = "biblical_moral_ai.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]

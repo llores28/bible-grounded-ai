@@ -2,25 +2,51 @@
 
 An open research initiative to develop a Bible-grounded moral reasoning and life-guidance AI with biblical-language scholarship, transparent theological assumptions, evidence-backed interpretation, and strong safeguards for human dignity and safety.
 
-This repository contains the technical project plan, fundraising strategy, and frontend source for the public project website.
+This repository contains the technical plan, governance policies, deterministic Python safety and verification core, QLoRA/DPO configuration, evaluation scaffolding, and frontend source for the public project website.
 
 ## Project goals
 
-- Adapt Apertus v1.1 1.5B Base for Biblical Hebrew, Biblical Aramaic, Koine Greek, and Latin.
+- Evaluate Apertus 1.5B, 4B, and 8B candidates, then adapt the smallest model that passes the interpretation and safety capacity gates.
 - Build retrieval-backed manuscript and Scripture citation workflows.
+- Build an auditable "Scripture interprets Scripture" evidence graph for quotations, allusions, typology, symbols, prophetic durations, and moral application.
+- Evaluate historicist prophetic rules—including the 42-month/1,260-day correspondence and day-year application—with explicit arithmetic, assumptions, alternative readings, and anti-numerology safeguards.
 - Define a transparent Biblical Moral Constitution for practical reasoning.
-- Clearly distinguish explicit biblical teaching, broader biblical principles, and tradition-specific interpretations.
+- Distinguish explicit text, multi-passage canonical synthesis, historical interpretation, organizational alignment, and speculation without favoring or penalizing a doctrine because a denomination teaches it.
 - Validate linguistic accuracy, citation reliability, safety, and general-capability retention before making public claims.
 
 The system is not intended to claim divine authority, moral consciousness, or replacement of Scripture, prayer, conscience, pastoral care, or qualified professional advice.
 
 ## Repository contents
 
-- [`docs/Apertus_Bible_Grounded_AI_Master_Plan.md`](docs/Apertus_Bible_Grounded_AI_Master_Plan.md) — implementation-ready technical roadmap for an RTX 5090 32 GB workstation.
-- [`docs/Bible_Grounded_AI_Fundraising_and_Website_Plan.md`](docs/Bible_Grounded_AI_Fundraising_and_Website_Plan.md) — milestone-based fundraising, accountability, and outreach plan.
-- [`app/`](app/) — website page, layout, and styling.
-- [`public/`](public/) — public website assets.
-- [`package.json`](package.json) — frontend dependencies and scripts.
+- [`MORAL_CONSTITUTION.md`](MORAL_CONSTITUTION.md), [`HERMENEUTICS_POLICY.md`](HERMENEUTICS_POLICY.md), [`THEOLOGY_POLICY.md`](THEOLOGY_POLICY.md), and [`SAFETY_POLICY.md`](SAFETY_POLICY.md) define the normative and interpretive controls.
+- [`configs/commandments.json`](configs/commandments.json) and [`PROPHETIC_RULE_REGISTRY.yaml`](PROPHETIC_RULE_REGISTRY.yaml) are the executable commandment and prophetic policies.
+- [`src/biblical_moral_ai/`](src/biblical_moral_ai/) implements approved-source retrieval, canonical graph storage, exact citation checking, safe arithmetic, commandment and pastoral-safety checks, local inference, dataset validation, training preflight, and release gates.
+- [`schemas/`](schemas/) defines the machine-readable answer, review, corpus, preference, and release contracts.
+- [`configs/training/`](configs/training/) contains pinned Apertus 8B QLoRA SFT and DPO experiment configurations.
+- [`evals/`](evals/) contains public adversarial cases, a sealed-set custody contract, and release-metric templates.
+- [`docs/Apertus_Bible_Grounded_AI_Master_Plan.md`](docs/Apertus_Bible_Grounded_AI_Master_Plan.md) is the v1.3 technical roadmap; [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) is the fail-closed CUDA training procedure.
+- [`app/`](app/) and [`public/`](public/) contain the public project website.
+
+## Validate the implementation
+
+Requirements: Python 3.11 or newer. The deterministic core has no runtime dependencies outside the standard library.
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m biblical_moral_ai validate
+python -m ruff check src tests/python
+python -m unittest discover -s tests/python -v
+```
+
+The training preflight is intentionally stricter and currently returns exit code `2` because approved corpora and reviewed datasets do not yet exist:
+
+```powershell
+python -m biblical_moral_ai preflight
+python -m biblical_moral_ai cuda-check --minimum-vram-gib 24
+python -m biblical_moral_ai train configs/training/apertus_8b_qlora.json
+```
+
+See [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) before installing optional CUDA dependencies or executing a training run.
 
 ## Website
 
@@ -44,7 +70,7 @@ npm test
 
 ## Current status
 
-The project is in planning and fundraising. The plans describe proposed engineering targets and validation gates; they are not claims that a trained or scholar-reviewed model already exists.
+The governance, schemas, retrieval store, local inference gate, training launchers, public evaluation cases, and deterministic verification tests are implemented. The project remains pre-training: accepted expert-reviewed SFT examples are `0/3,000`, reviewed preference pairs are `0/1,000`, and sealed acceptance cases are `0/500`. All candidate biblical corpora remain pending exact-edition and legal approval, so no adapter has been trained and no scholar-facing release is authorized. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md).
 
 ## Contributions
 

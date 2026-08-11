@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "status": "not_created",
+  "target_minimum_cases": 500,
+  "accepted_case_count": 0,
+  "encrypted_artifact_sha256": null,
+  "custody_record_id": null,
+  "protocol_version": "1.0",
+  "dual_review_coverage": 0.0,
+  "training_access_prohibited": true,
+  "content_committed_to_repository": false
+}
+
