@@ -204,11 +204,22 @@ class ReviewedDatasetValidator:
                         )
                     )
                 chosen_report = self.pipeline.review(chosen)
-                if chosen_report.decision is not PipelineDecision.RELEASE:
+                expected_decision = PipelineDecision(
+                    str(record.get("expected_decision", "release"))
+                )
+                if chosen_report.decision is not expected_decision:
                     row_issues.extend(
                         DatasetIssue(record_id, f"CHOSEN_{issue.code}", issue.message)
                         for issue in chosen_report.issues
                     )
+                    if not chosen_report.issues:
+                        row_issues.append(
+                            DatasetIssue(
+                                record_id,
+                                "CHOSEN_DECISION_MISMATCH",
+                                f"expected {expected_decision.value}, got release",
+                            )
+                        )
             except (KeyError, TypeError, ValueError) as exc:
                 row_issues.append(DatasetIssue(record_id, "INVALID_PREFERENCE_ANSWER", str(exc)))
 
@@ -234,12 +245,16 @@ class ReviewedDatasetValidator:
             seen_ids.add(record_id)
             try:
                 answer = MoralAnswer.from_dict(record["answer"])
-                if self.pipeline.review(answer).decision is not PipelineDecision.RELEASE:
+                expected_decision = PipelineDecision(
+                    str(record.get("expected_decision", "release"))
+                )
+                actual_decision = self.pipeline.review(answer).decision
+                if actual_decision is not expected_decision:
                     row_issues.append(
                         DatasetIssue(
                             record_id,
-                            "EVAL_EXPECTED_ANSWER_NOT_RELEASABLE",
-                            "expected answer fails deterministic policy or citation validation",
+                            "EVAL_DECISION_MISMATCH",
+                            f"expected {expected_decision.value}, got {actual_decision.value}",
                         )
                     )
             except (KeyError, TypeError, ValueError) as exc:
@@ -384,12 +399,17 @@ class ReviewedDatasetValidator:
                     continue
                 reviewer_id = str(review.get("reviewer_id", ""))
                 reviewer = reviewers.get(reviewer_id)
-                if reviewer is None or reviewer.get("status") != "active":
+                if (
+                    reviewer is None
+                    or reviewer.get("status") != "active"
+                    or reviewer.get("affiliations_disclosed") is not True
+                    or not reviewer.get("independence_attested_on")
+                ):
                     issues.append(
                         DatasetIssue(
                             record_id,
                             "REVIEWER_NOT_REGISTERED",
-                            f"reviewer is not active in the registry: {reviewer_id}",
+                            f"reviewer is not active, disclosed, and attested: {reviewer_id}",
                         )
                     )
                 if reviewer_id == author_id:

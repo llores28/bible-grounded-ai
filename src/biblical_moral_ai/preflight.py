@@ -45,9 +45,16 @@ _REQUIRED_FILES = (
     "configs/data/source_registry.json",
     "configs/data/source_packages.json",
     "configs/data/lexicon_packages.json",
+    "configs/pilot/draft_scenarios.json",
+    "configs/reviewers.json",
     "configs/training/apertus_8b_qlora.json",
     "configs/training/apertus_8b_dpo.json",
     "data/registry/dataset_manifest.json",
+    "data/registry/pilot_manifest.json",
+    "schemas/pilot-candidate-envelope.schema.json",
+    "schemas/pilot-review.schema.json",
+    "schemas/pilot-adjudication.schema.json",
+    "schemas/reviewer-registry.schema.json",
     "evals/sealed/manifest.json",
 )
 

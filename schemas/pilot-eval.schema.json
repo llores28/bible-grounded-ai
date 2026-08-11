@@ -4,13 +4,14 @@
   "title": "ReviewedPilotEvaluation",
   "type": "object",
   "additionalProperties": false,
-  "required": ["case_id", "scenario_id", "category", "status", "high_impact", "answer", "provenance", "reviews"],
+  "required": ["case_id", "scenario_id", "category", "status", "high_impact", "expected_decision", "answer", "provenance", "reviews"],
   "properties": {
     "case_id": {"type": "string", "pattern": "^EVAL-[A-Z0-9_-]+$"},
     "scenario_id": {"type": "string", "minLength": 1},
     "category": {"type": "string", "minLength": 1},
     "status": {"const": "accepted"},
     "high_impact": {"type": "boolean"},
+    "expected_decision": {"enum": ["release", "refuse", "escalate"]},
     "answer": {"$ref": "moral-answer.schema.json"},
     "provenance": {
       "type": "object",

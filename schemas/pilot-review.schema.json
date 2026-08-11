@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/pilot-review.schema.json",
+  "title": "IndependentPilotReview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["review_id", "item_id", "reviewer_id", "packet_sha256", "decision", "rationale", "reviewed_at", "independent_blind_attestation", "affiliations_disclosed"],
+  "properties": {
+    "review_id": {"type": "string", "pattern": "^REVIEW-[A-Z0-9_-]+$"},
+    "item_id": {"type": "string", "pattern": "^(SFT|DPO|EVAL)-DRAFT-[0-9]{3}$"},
+    "reviewer_id": {"type": "string", "minLength": 1},
+    "packet_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "decision": {"enum": ["approve", "revise", "reject"]},
+    "rationale": {"type": "string", "minLength": 1},
+    "required_corrections": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "independent_blind_attestation": {"const": true},
+    "affiliations_disclosed": {"const": true}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/pilot-candidate-envelope.schema.json",
+  "title": "PilotCandidateEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["item_id", "candidate_revision", "record"],
+  "properties": {
+    "item_id": {"type": "string", "pattern": "^(SFT|DPO|EVAL)-DRAFT-[0-9]{3}$"},
+    "candidate_revision": {"type": "integer", "minimum": 1},
+    "record": {
+      "type": "object",
+      "description": "A complete SFT, preference, or evaluation record with status=candidate and no prepopulated reviews. Runtime validation selects the exact record contract from item_id."
+    }
+  }
+}

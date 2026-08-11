@@ -10,10 +10,13 @@ from typing import Any
 from .citation import CitationVerifier
 from .dataset import ReviewedDatasetValidator, materialize_sft_record, read_jsonl
 from .evidence_store import file_sha256
+from .pilot_authoring import PilotDraftWorkflow
+from .pilot_candidates import PilotCandidateWorkflow
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import PreflightCheck, PreflightReport, ProjectPreflight
 from .registry import load_commandment_rules, load_json
+from .review_ledger import ReviewLedgerValidator
 
 
 class PilotWorkflow:
@@ -44,6 +47,7 @@ class PilotWorkflow:
                 for item in reviewer_registry["reviewers"]
                 if item.get("status") == "active"
                 and item.get("affiliations_disclosed") is True
+                and item.get("independence_attested_on")
             ]
             checks.append(
                 PreflightCheck(
@@ -55,6 +59,44 @@ class PilotWorkflow:
         except (KeyError, TypeError, ValueError, OSError) as exc:
             reviewer_registry = {"reviewers": []}
             checks.append(PreflightCheck("pilot_reviewers", False, str(exc)))
+
+        draft_report = PilotDraftWorkflow(self.root).audit()
+        checks.append(
+            PreflightCheck(
+                "pilot_draft_queue",
+                draft_report.passed,
+                f"draft counts={draft_report.counts}; sensitive={draft_report.sensitive_counts}"
+                if draft_report.passed
+                else f"first issue: {draft_report.issues[0].code}",
+            )
+        )
+        candidate_report = PilotCandidateWorkflow(self.root).audit()
+        checks.append(
+            PreflightCheck(
+                "pilot_candidates",
+                candidate_report.passed,
+                f"candidate counts={candidate_report.counts}"
+                if candidate_report.passed
+                else f"first issue: {candidate_report.issues[0].code}",
+            )
+        )
+        review_report = ReviewLedgerValidator(self.root).validate()
+        checks.append(
+            PreflightCheck(
+                "pilot_review_ledger",
+                review_report.passed,
+                (
+                    f"consensus approved={review_report.consensus_approved_count}/"
+                    f"{review_report.assignment_count}"
+                )
+                if review_report.passed
+                else (
+                    f"first issue: {review_report.issues[0].code}"
+                    if review_report.issues
+                    else "review ledger incomplete"
+                ),
+            )
+        )
 
         try:
             corpus_payload = load_json(self.root / "data/index/citation_corpus.json")

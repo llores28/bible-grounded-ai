@@ -26,6 +26,7 @@ The system is not intended to claim divine authority, moral consciousness, or re
 - [`configs/data/source_packages.json`](configs/data/source_packages.json) and [`configs/data/lexicon_packages.json`](configs/data/lexicon_packages.json) lock the approved Scripture, morphology, Hebrew/Aramaic dictionary, and Koine Greek dictionary inputs.
 - [`evals/`](evals/) contains public adversarial cases, a sealed-set custody contract, and release-metric templates.
 - [`docs/Apertus_Bible_Grounded_AI_Master_Plan.md`](docs/Apertus_Bible_Grounded_AI_Master_Plan.md) is the v1.3 technical roadmap; [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) is the fail-closed CUDA training procedure.
+- [`docs/PILOT_REVIEW_WORKFLOW.md`](docs/PILOT_REVIEW_WORKFLOW.md) defines the 50/20/25 authoring queue, blinded human review ledger, revision/adjudication rules, and CPU validation receipt.
 - [`app/`](app/) and [`public/`](public/) contain the public project website.
 
 ## Validate the implementation
@@ -43,6 +44,9 @@ Build the approved, digest-verified evidence store without committing third-part
 
 ```powershell
 python -m biblical_moral_ai build-evidence --fetch
+python -m biblical_moral_ai audit-pilot-drafts
+python -m biblical_moral_ai build-authoring-packets
+python -m biblical_moral_ai audit-pilot-candidates
 python -m biblical_moral_ai search-lexicon "חֶסֶד" --language Hebrew
 python -m biblical_moral_ai search-lexicon "ἀγάπη" --language "Koine Greek"
 ```
@@ -79,7 +83,7 @@ npm test
 
 ## Current status
 
-The approved Scripture and linguistic sources are pinned and the fail-closed import pipeline is implemented. The project remains pre-training: the smoke-test pilot is `0/50` SFT, `0/20` preference, and `0/25` evaluation records; production remains `0/3,000` SFT and `0/1,000` preference pairs. No adapter has been trained and no scholar-facing release is authorized. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md).
+The approved Scripture and linguistic sources are pinned and the fail-closed import pipeline is implemented. A curated, evidence-resolved `draft_only` queue and deterministic AI-authored candidate set contain 50 SFT, 20 preference, and 25 evaluation scenarios and pass CPU candidate validation. Accepted counts remain `0/50`, `0/20`, and `0/25` until real independent reviewers approve them. Production remains `0/3,000` SFT and `0/1,000` preference pairs. No adapter has been trained and no scholar-facing release is authorized. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md).
 
 ## Contributions
 

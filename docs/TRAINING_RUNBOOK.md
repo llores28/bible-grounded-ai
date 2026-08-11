@@ -44,6 +44,8 @@ Record `nvidia-smi`, driver version, CUDA runtime reported by PyTorch, GPU name,
 
 Candidate doctrine outlines are not training data and never count toward minimums.
 
+The complete authoring, blinded review, revision, adjudication, and hash-bound finalization procedure is in [`PILOT_REVIEW_WORKFLOW.md`](PILOT_REVIEW_WORKFLOW.md).
+
 ## Pilot before production
 
 The first GPU run is limited to a two-step smoke test after all of these are real:
@@ -52,6 +54,20 @@ The first GPU run is limited to a two-step smoke test after all of these are rea
 2. At least two active reviewers in `configs/reviewers.json`, with disclosed affiliations and review independence from each author.
 3. Two independent approvals for every prophecy, abuse, violence, force, or disputed-doctrine record; disagreements must be adjudicated before acceptance.
 4. Exact source approval decision IDs, exact Scripture quotations, CPU policy checks, dataset hashes, and the built-evidence manifest all match.
+
+Prepare the candidate queue before any record can be accepted:
+
+```powershell
+python -m biblical_moral_ai audit-pilot-drafts
+python -m biblical_moral_ai build-authoring-packets
+python -m biblical_moral_ai seed-pilot-candidates --overwrite  # only when replacing candidates deliberately
+python -m biblical_moral_ai audit-pilot-candidates
+python -m biblical_moral_ai build-candidate-review-packets
+python -m biblical_moral_ai assign-pilot-reviewers
+python -m biblical_moral_ai validate-review-ledger
+python -m biblical_moral_ai finalize-reviewed-pilot
+python -m biblical_moral_ai write-pilot-audit-receipt
+```
 
 Then materialize the reviewed records and inspect the pilot request:
 

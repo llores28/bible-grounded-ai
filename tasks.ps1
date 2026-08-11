@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("validate", "lint", "test", "pilot-preflight", "preflight", "all")]
+    [ValidateSet("validate", "lint", "test", "pilot-drafts", "pilot-preflight", "preflight", "all")]
     [string]$Task = "all"
 )
 
@@ -31,6 +31,10 @@ switch ($Task) {
     }
     "pilot-preflight" {
         python -m biblical_moral_ai --root $PSScriptRoot pilot-preflight
+        exit $LASTEXITCODE
+    }
+    "pilot-drafts" {
+        python -m biblical_moral_ai --root $PSScriptRoot audit-pilot-drafts
         exit $LASTEXITCODE
     }
     "all" {

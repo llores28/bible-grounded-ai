@@ -14,11 +14,15 @@ from .evidence_store import EvidenceStore
 from .hardware import inspect_cuda
 from .inference import BiblicalMoralAgent, LocalChatBackend
 from .pilot import PilotWorkflow
+from .pilot_authoring import PilotDraftWorkflow
+from .pilot_candidates import PilotCandidateWorkflow
+from .pilot_seed import PilotSeedBuilder
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import ProjectPreflight
 from .registry import load_commandment_rules, load_json
 from .release import ReleaseGateEvaluator, ReleaseMetrics
+from .review_ledger import ReviewLedgerValidator
 from .schemas import MoralAnswer
 from .training import TrainingBlockedError, inspect_training_request, run_training
 
@@ -48,6 +52,40 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("pilot-preflight", help="validate the 50/20/25 reviewed pilot")
     commands.add_parser(
         "materialize-pilot", help="materialize training rows after pilot preflight passes"
+    )
+    commands.add_parser(
+        "audit-pilot-drafts", help="verify the 50/20/25 draft queue against pinned evidence"
+    )
+    commands.add_parser(
+        "build-authoring-packets", help="snapshot exact evidence for pilot authors"
+    )
+    commands.add_parser(
+        "audit-pilot-candidates", help="validate fully authored candidates before review"
+    )
+    seed = commands.add_parser(
+        "seed-pilot-candidates",
+        help="create deterministic AI-authored candidates for human revision and review",
+    )
+    seed.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="replace existing candidate files deliberately",
+    )
+    commands.add_parser(
+        "build-candidate-review-packets",
+        help="bind validated candidate records to exact evidence for review",
+    )
+    commands.add_parser(
+        "assign-pilot-reviewers", help="assign qualified reviewers to validated candidates"
+    )
+    commands.add_parser(
+        "validate-review-ledger", help="validate blinded reviews and adjudications"
+    )
+    commands.add_parser(
+        "finalize-reviewed-pilot", help="write accepted pilot splits after unanimous review"
+    )
+    commands.add_parser(
+        "write-pilot-audit-receipt", help="write a hash-bound CPU validation receipt"
     )
     build = commands.add_parser(
         "build-evidence", help="fetch, verify, and atomically build all approved evidence"
@@ -122,6 +160,62 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         _json({"status": "materialized", "outputs": outputs})
         return 0
+    if args.command == "audit-pilot-drafts":
+        report = PilotDraftWorkflow(root).audit()
+        _json(report.to_dict())
+        return 0 if report.passed else 2
+    if args.command == "build-authoring-packets":
+        try:
+            result = PilotDraftWorkflow(root).build_authoring_packets()
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
+        return 0
+    if args.command == "audit-pilot-candidates":
+        report = PilotCandidateWorkflow(root).audit()
+        _json(report.to_dict())
+        return 0 if report.passed else 2
+    if args.command == "seed-pilot-candidates":
+        try:
+            result = PilotSeedBuilder(root).write_candidates(overwrite=args.overwrite)
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
+        return 0
+    if args.command == "build-candidate-review-packets":
+        try:
+            result = PilotCandidateWorkflow(root).build_review_packets()
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
+        return 0
+    if args.command == "assign-pilot-reviewers":
+        try:
+            result = PilotCandidateWorkflow(root).assign_reviewers()
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
+        return 0
+    if args.command == "validate-review-ledger":
+        report = ReviewLedgerValidator(root).validate()
+        _json(report.to_dict())
+        return 0 if report.passed else 2
+    if args.command == "finalize-reviewed-pilot":
+        try:
+            result = PilotCandidateWorkflow(root).finalize_reviewed_pilot()
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
+        return 0
+    if args.command == "write-pilot-audit-receipt":
+        result = PilotDraftWorkflow(root).write_cpu_audit_receipt()
+        _json(result)
+        return 0 if result["status"] == "ready" else 2
     if args.command == "build-evidence":
         result = build_approved_evidence(
             root=root,

@@ -12,6 +12,9 @@ data/artifacts/
 data/index/*.sqlite3
 data/index/*.sqlite3-*
 data/index/*.json
+data/pilot/authoring_packets.jsonl
+data/pilot/candidate_review_packets.jsonl
+data/audit/
 *.egg-info/
 /build/lib/
 *.tsbuildinfo

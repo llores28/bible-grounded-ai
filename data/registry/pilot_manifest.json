@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "updated_at": "2026-08-11T00:00:00Z",
-  "status": "collection_not_started",
+  "status": "draft_authoring_ready",
   "purpose": "Short QLoRA pipeline smoke test only; never authorizes production training or public model release.",
   "splits": {
     "sft_pilot": {

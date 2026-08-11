@@ -18,6 +18,8 @@ The dataset teaches an auditable procedure for Bible-grounded moral reasoning. I
 
 The machine-readable status is in `data/registry/dataset_manifest.json`. Counts represent accepted, deduplicated records only. Seed outlines and unreviewed drafts never count toward these targets.
 
+The smoke-test pilot is separately scoped to 50 SFT, 20 preference, and 25 evaluation records. Its committed `draft_only` queue is an authoring plan and counts as zero until complete candidates pass deterministic validation and real independent review under `docs/PILOT_REVIEW_WORKFLOW.md`.
+
 ## SFT record contract
 
 Every SFT record contains:
@@ -45,6 +47,8 @@ Preference records contain a shared prompt, chosen and rejected structured answe
 5. An adjudicator resolves material conflicts and records the rationale.
 6. Automated validators check schema, duplicates, citation corpus, source approval, contamination, and split isolation.
 7. Only accepted records enter countable manifests.
+
+Review decisions bind cryptographically to a complete candidate packet. Any candidate change invalidates prior decisions. A disagreement can require revision or rejection but cannot be used to accept the disputed version; revised candidates receive fresh blinded reviews.
 
 ## Sources and licensing
 

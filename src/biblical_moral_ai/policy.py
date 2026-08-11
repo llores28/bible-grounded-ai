@@ -83,6 +83,11 @@ _HIDDEN_MOTIVE_ASSERTION = re.compile(
 )
 
 
+def _contains_trigger(text: str, trigger: str) -> bool:
+    """Match policy terms as words/phrases, not substrings such as war in software."""
+    return re.search(rf"(?<!\w){re.escape(trigger)}(?!\w)", text) is not None
+
+
 class CommandmentPolicyEngine:
     """Verify an answer's explicit assessments and recommendation language."""
 
@@ -154,7 +159,7 @@ class CommandmentPolicyEngine:
 
         for number, triggers in _GOD_DUTY_TRIGGERS.items():
             if (
-                any(trigger in normalized_case for trigger in triggers)
+                any(_contains_trigger(normalized_case, trigger) for trigger in triggers)
                 and number not in assessments
             ):
                 issues.append(
@@ -172,7 +177,7 @@ class CommandmentPolicyEngine:
             if (
                 assessment is not None
                 and assessment.verdict is AssessmentVerdict.NOT_APPLICABLE
-                and any(trigger in normalized_case for trigger in triggers)
+                and any(_contains_trigger(normalized_case, trigger) for trigger in triggers)
             ):
                 issues.append(
                     VerificationIssue(

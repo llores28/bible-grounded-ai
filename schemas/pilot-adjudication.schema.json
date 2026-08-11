@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bible-grounded-ai.local/schemas/pilot-adjudication.schema.json",
+  "title": "PilotReviewAdjudication",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["adjudication_id", "item_id", "adjudicator_id", "review_ids", "decision", "rationale", "adjudicated_at"],
+  "properties": {
+    "adjudication_id": {"type": "string", "pattern": "^ADJ-[A-Z0-9_-]+$"},
+    "item_id": {"type": "string", "pattern": "^(SFT|DPO|EVAL)-DRAFT-[0-9]{3}$"},
+    "adjudicator_id": {"type": "string", "minLength": 1},
+    "review_ids": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "decision": {"enum": ["accept", "revise", "reject"]},
+    "rationale": {"type": "string", "minLength": 1},
+    "required_corrections": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "adjudicated_at": {"type": "string", "format": "date-time"}
+  }
+}

@@ -17,6 +17,8 @@ Snapshot date: 2026-08-11
 - Review-aware SFT and preference validators, stable answer rendering, pinned Apertus 8B QLoRA/DPO configs, CUDA inspection, run manifests, and non-waivable release gates.
 - Public commandment/adversarial cases and sealed-set custody requirements.
 - Separate fail-closed pilot workflow targeting 50 SFT records, 20 preference pairs, and 25 evaluation cases; sensitive categories require two registered independent reviewers.
+- Curated `draft_only` queue with exactly 50/20/25 unique scenarios, all resolved to approved evidence, plus authoring packets, candidate validation, blinded packet-bound reviews, revision/adjudication rules, finalization, and hash-bound CPU receipts.
+- Deterministic AI-authored candidate starting points for all 95 scenarios pass CPU policy and citation checks but count as zero until real independent human review.
 
 ## Deliberately not claimed
 

@@ -94,7 +94,7 @@ _RISK_PATTERNS: dict[str, re.Pattern[str]] = {
 }
 
 _IMMINENCE = re.compile(
-    r"\b(?:right\s+now|imminent|today|tonight|has\s+a\s+weapon|about\s+to|immediately)\b",
+    r"\b(?:right\s+now|now|imminent|today|tonight|has\s+a\s+weapon|about\s+to|immediately)\b",
     re.IGNORECASE,
 )
 

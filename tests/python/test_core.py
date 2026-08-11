@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import tempfile
@@ -42,6 +43,7 @@ from biblical_moral_ai.release import (  # noqa: E402
     ReleaseMetrics,
 )
 from biblical_moral_ai.render import render_moral_answer  # noqa: E402
+from biblical_moral_ai.review_ledger import ReviewLedgerValidator  # noqa: E402
 from biblical_moral_ai.safety import PastoralSafetyChecker  # noqa: E402
 from biblical_moral_ai.schemas import (  # noqa: E402
     AssessmentVerdict,
@@ -186,6 +188,18 @@ class PolicyPipelineTests(unittest.TestCase):
         self.assertEqual(report.decision, PipelineDecision.RELEASE)
         self.assertFalse(report.issues)
 
+    def test_policy_triggers_do_not_match_inside_larger_words(self) -> None:
+        answer = valid_answer(
+            request="Can I use pirated software for ministry?",
+            conclusion="Do not use software without permission; use a lawful alternative.",
+            relevant={8: AssessmentVerdict.COMPLIANT, 9: AssessmentVerdict.COMPLIANT},
+        )
+        report = make_pipeline().review(answer)
+        self.assertNotIn(
+            "CMD_RELEVANT_MARKED_NOT_APPLICABLE",
+            {issue.code for issue in report.issues if issue.commandment == 6},
+        )
+
     def test_every_interpersonal_commandment_requires_assessment(self) -> None:
         answer = replace(valid_answer(), commandment_assessments=assessments()[:-1])
         report = make_pipeline().review(answer)
@@ -317,6 +331,17 @@ class SafetyTests(unittest.TestCase):
         report = PastoralSafetyChecker().check(answer)
         self.assertEqual(report.decision, PipelineDecision.ESCALATE)
         self.assertIn("SAFETY_IMMINENT_DANGER", {issue.code for issue in report.issues})
+
+    def test_bare_now_is_an_imminence_signal(self) -> None:
+        answer = valid_answer(
+            request="I plan to kill myself now.",
+            conclusion="Move away from means of harm and seek immediate human help.",
+            practical_options=("Call emergency services or a crisis hotline now.",),
+            human_referral=("Contact 988, emergency services, and a trusted person.",),
+            relevant={6: AssessmentVerdict.COMPLIANT, 9: AssessmentVerdict.COMPLIANT},
+        )
+        report = PastoralSafetyChecker().check(answer)
+        self.assertEqual(report.decision, PipelineDecision.ESCALATE)
 
 
 class DatasetTests(unittest.TestCase):
@@ -468,6 +493,77 @@ class DatasetTests(unittest.TestCase):
         codes = {issue.code for issue in report.issues}
         self.assertIn("SENSITIVE_CATEGORY_NOT_HIGH_IMPACT", codes)
         self.assertIn("LICENSE_DECISION_MISMATCH", codes)
+
+    def test_review_ledger_binds_unanimous_review_to_candidate_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "configs").mkdir()
+            (root / "data/pilot").mkdir(parents=True)
+            reviewer_registry = {
+                "reviewers": [
+                    {
+                        "reviewer_id": "R1",
+                        "status": "active",
+                        "affiliations_disclosed": True,
+                        "independence_attested_on": "2026-08-11",
+                    }
+                ]
+            }
+            reviewer_path = root / "configs/reviewers.json"
+            reviewer_path.write_text(json.dumps(reviewer_registry), encoding="utf-8")
+            candidate = {"status": "candidate", "record_id": "SFT-PILOT-001"}
+            candidate_canonical = json.dumps(
+                candidate, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            )
+            packet = {
+                "item_id": "SFT-DRAFT-001",
+                "candidate_record": candidate,
+                "candidate_record_sha256": hashlib.sha256(
+                    candidate_canonical.encode("utf-8")
+                ).hexdigest(),
+            }
+            packet_canonical = json.dumps(
+                packet, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            )
+            packet["packet_sha256"] = hashlib.sha256(
+                packet_canonical.encode("utf-8")
+            ).hexdigest()
+            packet_path = root / "data/pilot/candidate_review_packets.jsonl"
+            packet_path.write_text(
+                json.dumps(packet, ensure_ascii=False, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            assignments = {
+                "candidate_packets_sha256": file_sha256(packet_path),
+                "reviewer_registry_sha256": file_sha256(reviewer_path),
+                "assignments": [
+                    {
+                        "item_id": "SFT-DRAFT-001",
+                        "packet_sha256": packet["packet_sha256"],
+                        "reviewer_ids": ["R1"],
+                    }
+                ],
+            }
+            (root / "data/pilot/reviewer_assignments.json").write_text(
+                json.dumps(assignments), encoding="utf-8"
+            )
+            review = {
+                "review_id": "REVIEW-1",
+                "item_id": "SFT-DRAFT-001",
+                "reviewer_id": "R1",
+                "packet_sha256": packet["packet_sha256"],
+                "decision": "approve",
+                "rationale": "The candidate and exact evidence were independently checked.",
+                "reviewed_at": "2026-08-11T12:00:00Z",
+                "independent_blind_attestation": True,
+                "affiliations_disclosed": True,
+            }
+            (root / "data/pilot/reviews.jsonl").write_text(
+                json.dumps(review) + "\n", encoding="utf-8"
+            )
+            report = ReviewLedgerValidator(root).validate()
+            self.assertTrue(report.passed, report.issues)
+            self.assertEqual(report.consensus_approved_count, 1)
 
 
 class EvidenceAndInferenceTests(unittest.TestCase):
@@ -848,6 +944,31 @@ class ReleaseAndProjectTests(unittest.TestCase):
         self.assertFalse(report.ready)
         failed = {check.name for check in report.checks if not check.passed}
         self.assertIn("pilot_reviewers", failed)
+
+    def test_curated_draft_queue_has_exact_50_20_25_and_sensitive_coverage(self) -> None:
+        payload = json.loads(
+            (ROOT / "configs/pilot/draft_scenarios.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            {split: len(payload[split]) for split in ("sft", "preferences", "evals")},
+            {"sft": 50, "preferences": 20, "evals": 25},
+        )
+        sensitive = {"prophecy", "abuse", "violence", "force", "disputed_doctrine"}
+        covered = {
+            item["category"]
+            for split in ("sft", "preferences", "evals")
+            for item in payload[split]
+            if item["category"] in sensitive
+        }
+        self.assertEqual(covered, sensitive)
+        self.assertTrue(
+            all(
+                item["high_impact"] is True
+                for split in ("sft", "preferences", "evals")
+                for item in payload[split]
+                if item["category"] in sensitive
+            )
+        )
 
     def test_render_contains_required_public_sections(self) -> None:
         rendered = render_moral_answer(valid_answer())
