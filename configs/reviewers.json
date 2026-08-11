@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "status": "recruitment_required",
+  "independence_rule": "A reviewer must not be the record author and must review without seeing another reviewer's decision.",
+  "affiliation_rule": "Each reviewer must disclose denominational, institutional, and project affiliations before reviewing.",
+  "reviewers": []
+}

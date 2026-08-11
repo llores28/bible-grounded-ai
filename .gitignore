@@ -7,8 +7,11 @@ __pycache__/
 *.py[cod]
 .venv/
 artifacts/
+data/cache/
+data/artifacts/
 data/index/*.sqlite3
 data/index/*.sqlite3-*
+data/index/*.json
 *.egg-info/
 /build/lib/
 *.tsbuildinfo

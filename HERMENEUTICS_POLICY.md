@@ -10,7 +10,8 @@ Status: implementation baseline; textual-source licensing and scholar review pen
 - The public-facing English display text is a reviewed KJV edition, subject to jurisdiction and exact-edition approval.
 - Reviewed critical Hebrew and Biblical Aramaic control Old Testament linguistic claims when English wording differs.
 - Reviewed critical Greek controls New Testament linguistic claims when English wording differs.
-- WLC/MorphHB and SBLGNT/MorphGNT are operational candidates, not approved corpora, until exact revisions, hashes, attribution, and downstream training rights are signed off in `configs/data/source_registry.json`.
+- WLC/MorphHB and SBLGNT/MorphGNT are approved only at the exact revisions, hashes, attributions, use scopes, and distribution conditions recorded in `configs/data/source_registry.json`; any other revision is unapproved.
+- Hebrew, Aramaic, and Koine Greek lexicon entries are auxiliary linguistic evidence. A dictionary definition may inform a labeled language note but may not be presented as Scripture text or as decisive proof of a disputed doctrine.
 - Textus Receptus, Septuagint, Vulgate, and documented manuscript variants are comparative witnesses. They are labeled and never silently merged into the controlling text.
 
 ## Bible-interprets-Bible procedure

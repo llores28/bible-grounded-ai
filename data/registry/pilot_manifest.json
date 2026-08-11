@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-08-11T00:00:00Z",
+  "status": "collection_not_started",
+  "purpose": "Short QLoRA pipeline smoke test only; never authorizes production training or public model release.",
+  "splits": {
+    "sft_pilot": {
+      "target_minimum": 50,
+      "accepted_count": 0,
+      "path": "data/pilot/sft.jsonl",
+      "sha256": null
+    },
+    "preference_pilot": {
+      "target_minimum": 20,
+      "accepted_count": 0,
+      "path": "data/pilot/preferences.jsonl",
+      "sha256": null
+    },
+    "evaluation_pilot": {
+      "target_minimum": 25,
+      "accepted_count": 0,
+      "path": "data/pilot/evals.jsonl",
+      "sha256": null
+    }
+  },
+  "sensitive_categories": ["prophecy", "abuse", "violence", "force", "disputed_doctrine"],
+  "sensitive_review_requirement": "two independent active reviewers plus adjudication for any disagreement",
+  "counting_rule": "Only accepted records that pass CPU policy, exact citation, source approval, license decision, reviewer registry, and digest validation count."
+}

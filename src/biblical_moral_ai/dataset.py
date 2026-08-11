@@ -46,8 +46,18 @@ def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
 
 
 class ReviewedDatasetValidator:
-    def __init__(self, pipeline: InferenceReviewPipeline) -> None:
+    SENSITIVE_CATEGORIES = {"prophecy", "abuse", "violence", "force", "disputed_doctrine"}
+
+    def __init__(
+        self,
+        pipeline: InferenceReviewPipeline,
+        *,
+        source_registry: dict[str, Any] | None = None,
+        reviewer_registry: dict[str, Any] | None = None,
+    ) -> None:
         self.pipeline = pipeline
+        self.source_registry = source_registry
+        self.reviewer_registry = reviewer_registry
 
     def validate_sft(self, records: list[dict[str, Any]]) -> DatasetValidationReport:
         issues: list[DatasetIssue] = []
@@ -57,6 +67,7 @@ class ReviewedDatasetValidator:
             record_id = str(record.get("record_id", f"row-{index}"))
             row_issues = self._validate_common_review(record, record_id)
             row_issues.extend(self._validate_sft_metadata(record, record_id))
+            row_issues.extend(self._validate_governance(record, record_id))
             if record_id in seen_ids:
                 row_issues.append(
                     DatasetIssue(record_id, "DUPLICATE_RECORD_ID", "record_id is not unique")
@@ -86,6 +97,7 @@ class ReviewedDatasetValidator:
             record_id = str(record.get("pair_id", f"row-{index}"))
             row_issues: list[DatasetIssue] = []
             row_issues.extend(self._validate_preference_metadata(record, record_id))
+            row_issues.extend(self._validate_governance(record, record_id))
             if record.get("status") != "accepted":
                 row_issues.append(
                     DatasetIssue(record_id, "STATUS_NOT_ACCEPTED", "pair is not accepted")
@@ -206,15 +218,49 @@ class ReviewedDatasetValidator:
                 accepted += 1
         return DatasetValidationReport(accepted, len(records) - accepted, tuple(issues))
 
-    @staticmethod
-    def _validate_sft_metadata(record: dict[str, Any], record_id: str) -> list[DatasetIssue]:
+    def validate_evals(self, records: list[dict[str, Any]]) -> DatasetValidationReport:
         issues: list[DatasetIssue] = []
-        if not re.fullmatch(r"SFT-[A-Z0-9_-]+", record_id):
+        accepted = 0
+        seen_ids: set[str] = set()
+        for index, record in enumerate(records):
+            record_id = str(record.get("case_id", f"row-{index}"))
+            row_issues = self._validate_common_review(record, record_id)
+            row_issues.extend(self._validate_sft_metadata(record, record_id, id_prefix="EVAL"))
+            row_issues.extend(self._validate_governance(record, record_id))
+            if record_id in seen_ids:
+                row_issues.append(
+                    DatasetIssue(record_id, "DUPLICATE_CASE_ID", "case_id is not unique")
+                )
+            seen_ids.add(record_id)
+            try:
+                answer = MoralAnswer.from_dict(record["answer"])
+                if self.pipeline.review(answer).decision is not PipelineDecision.RELEASE:
+                    row_issues.append(
+                        DatasetIssue(
+                            record_id,
+                            "EVAL_EXPECTED_ANSWER_NOT_RELEASABLE",
+                            "expected answer fails deterministic policy or citation validation",
+                        )
+                    )
+            except (KeyError, TypeError, ValueError) as exc:
+                row_issues.append(DatasetIssue(record_id, "INVALID_EVAL_ANSWER", str(exc)))
+            if row_issues:
+                issues.extend(row_issues)
+            else:
+                accepted += 1
+        return DatasetValidationReport(accepted, len(records) - accepted, tuple(issues))
+
+    @staticmethod
+    def _validate_sft_metadata(
+        record: dict[str, Any], record_id: str, *, id_prefix: str = "SFT"
+    ) -> list[DatasetIssue]:
+        issues: list[DatasetIssue] = []
+        if not re.fullmatch(rf"{id_prefix}-[A-Z0-9_-]+", record_id):
             issues.append(
                 DatasetIssue(
                     record_id,
                     "INVALID_RECORD_ID",
-                    "record_id must match SFT-[A-Z0-9_-]+",
+                    f"record ID must match {id_prefix}-[A-Z0-9_-]+",
                 )
             )
         if not str(record.get("scenario_id", "")).strip():
@@ -225,7 +271,7 @@ class ReviewedDatasetValidator:
                 DatasetIssue(record_id, "PROVENANCE_MISSING", "provenance object is required")
             )
             return issues
-        for field in ("author_id", "created_at", "license_check_id"):
+        for field in ("author_id", "created_at"):
             if not str(provenance.get(field, "")).strip():
                 issues.append(
                     DatasetIssue(
@@ -234,6 +280,14 @@ class ReviewedDatasetValidator:
                         f"provenance.{field} is required",
                     )
                 )
+        if not provenance.get("license_check_ids") and not provenance.get("license_check_id"):
+            issues.append(
+                DatasetIssue(
+                    record_id,
+                    "PROVENANCE_FIELD_MISSING",
+                    "provenance.license_check_ids is required",
+                )
+            )
         try:
             created_at = datetime.fromisoformat(
                 str(provenance.get("created_at", "")).replace("Z", "+00:00")
@@ -273,6 +327,81 @@ class ReviewedDatasetValidator:
                 )
         return issues
 
+    def _validate_governance(
+        self, record: dict[str, Any], record_id: str
+    ) -> list[DatasetIssue]:
+        issues: list[DatasetIssue] = []
+        category = re.sub(
+            r"[\s-]+", "_", str(record.get("category", "")).strip().casefold()
+        )
+        if category in self.SENSITIVE_CATEGORIES and record.get("high_impact") is not True:
+            issues.append(
+                DatasetIssue(
+                    record_id,
+                    "SENSITIVE_CATEGORY_NOT_HIGH_IMPACT",
+                    f"{category} records must be marked high_impact",
+                )
+            )
+        if self.source_registry is not None:
+            approved = {
+                str(item.get("source_id")): item
+                for item in self.source_registry.get("sources", [])
+                if item.get("status") == "approved"
+            }
+            provenance = record.get("provenance", {})
+            source_ids = provenance.get("source_ids", []) if isinstance(provenance, dict) else []
+            decisions = (
+                provenance.get("license_check_ids", {}) if isinstance(provenance, dict) else {}
+            )
+            for source_id in source_ids:
+                source = approved.get(str(source_id))
+                if source is None:
+                    issues.append(
+                        DatasetIssue(
+                            record_id,
+                            "SOURCE_NOT_APPROVED",
+                            f"provenance source is not approved: {source_id}",
+                        )
+                    )
+                    continue
+                expected = source.get("approval", {}).get("decision_id")
+                if decisions.get(source_id) != expected:
+                    issues.append(
+                        DatasetIssue(
+                            record_id,
+                            "LICENSE_DECISION_MISMATCH",
+                            f"license_check_ids[{source_id}] must equal {expected}",
+                        )
+                    )
+        if self.reviewer_registry is not None:
+            reviewers = {
+                str(item.get("reviewer_id")): item
+                for item in self.reviewer_registry.get("reviewers", [])
+            }
+            author_id = str(record.get("provenance", {}).get("author_id", ""))
+            for review in record.get("reviews", []):
+                if not isinstance(review, dict):
+                    continue
+                reviewer_id = str(review.get("reviewer_id", ""))
+                reviewer = reviewers.get(reviewer_id)
+                if reviewer is None or reviewer.get("status") != "active":
+                    issues.append(
+                        DatasetIssue(
+                            record_id,
+                            "REVIEWER_NOT_REGISTERED",
+                            f"reviewer is not active in the registry: {reviewer_id}",
+                        )
+                    )
+                if reviewer_id == author_id:
+                    issues.append(
+                        DatasetIssue(
+                            record_id,
+                            "REVIEWER_IS_AUTHOR",
+                            "an author cannot count as an independent reviewer",
+                        )
+                    )
+        return issues
+
     @staticmethod
     def _validate_preference_metadata(record: dict[str, Any], record_id: str) -> list[DatasetIssue]:
         issues: list[DatasetIssue] = []
@@ -292,7 +421,7 @@ class ReviewedDatasetValidator:
                 DatasetIssue(record_id, "PROVENANCE_MISSING", "provenance object is required")
             )
             return issues
-        for field in ("author_id", "created_at", "license_check_id"):
+        for field in ("author_id", "created_at"):
             if not str(provenance.get(field, "")).strip():
                 issues.append(
                     DatasetIssue(
@@ -301,6 +430,14 @@ class ReviewedDatasetValidator:
                         f"provenance.{field} is required",
                     )
                 )
+        if not provenance.get("license_check_ids") and not provenance.get("license_check_id"):
+            issues.append(
+                DatasetIssue(
+                    record_id,
+                    "PROVENANCE_FIELD_MISSING",
+                    "provenance.license_check_ids is required",
+                )
+            )
         try:
             created_at = datetime.fromisoformat(
                 str(provenance.get("created_at", "")).replace("Z", "+00:00")
@@ -346,6 +483,14 @@ class ReviewedDatasetValidator:
             if not isinstance(review, dict) or not review.get("independent", False):
                 issues.append(
                     DatasetIssue(record_id, "REVIEW_NOT_INDEPENDENT", "review must be independent")
+                )
+            if not isinstance(review, dict) or not str(review.get("reviewer_id", "")).strip():
+                issues.append(
+                    DatasetIssue(
+                        record_id,
+                        "REVIEWER_ID_MISSING",
+                        "every countable review requires a reviewer_id",
+                    )
                 )
             if not review.get("affiliations_disclosed", False):
                 issues.append(

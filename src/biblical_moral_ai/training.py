@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .hardware import inspect_cuda
+from .pilot import PilotWorkflow
 from .preflight import ProjectPreflight
 from .registry import load_json
 
@@ -45,7 +46,11 @@ def inspect_training_request(config_path: str | Path, *, root: str | Path = ".")
     )
     config = load_json(path)
     stage = str(config.get("stage", "all"))
-    readiness = ProjectPreflight(root_path).training_readiness(stage=stage)
+    readiness = (
+        PilotWorkflow(root_path).readiness()
+        if config.get("preflight_mode") == "pilot"
+        else ProjectPreflight(root_path).training_readiness(stage=stage)
+    )
     cuda = inspect_cuda(
         minimum_vram_gib=float(config.get("gates", {}).get("minimum_gpu_vram_gib", 24))
     )
@@ -72,8 +77,15 @@ def run_training(
         else Path(config_path)
     )
     config = load_json(config_file)
-    readiness = ProjectPreflight(root_path).training_readiness(
-        stage=str(config.get("stage", "all"))
+    pilot_mode = config.get("preflight_mode") == "pilot"
+    if pilot_mode and not smoke_test:
+        raise TrainingBlockedError("pilot configuration may only run with --smoke-test")
+    readiness = (
+        PilotWorkflow(root_path).readiness()
+        if pilot_mode
+        else ProjectPreflight(root_path).training_readiness(
+            stage=str(config.get("stage", "all"))
+        )
     )
     if not readiness.ready:
         failed = [check.detail for check in readiness.checks if check.blocking and not check.passed]

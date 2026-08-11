@@ -42,6 +42,18 @@ class Passage:
     context: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class LexiconEntry:
+    source_id: str
+    entry_id: str
+    language: str
+    lemma: str
+    transliteration: str
+    gloss: str
+    definition: str
+    source_ref: str
+
+
 class EdgeType(str):
     ALLOWED = {
         "explicit_quotation",
@@ -143,6 +155,38 @@ class EvidenceStore:
                 context TEXT NOT NULL DEFAULT '',
                 UNIQUE(source_id, reference)
             );
+
+            CREATE TABLE IF NOT EXISTS lexicon_entries (
+                lexicon_row_id INTEGER PRIMARY KEY,
+                source_id TEXT NOT NULL REFERENCES sources(source_id),
+                entry_id TEXT NOT NULL,
+                language TEXT NOT NULL,
+                lemma TEXT NOT NULL,
+                transliteration TEXT NOT NULL,
+                gloss TEXT NOT NULL,
+                definition TEXT NOT NULL,
+                source_ref TEXT NOT NULL,
+                UNIQUE(source_id, entry_id)
+            );
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS lexicon_search USING fts5(
+                lemma,
+                transliteration,
+                gloss,
+                definition,
+                content='lexicon_entries',
+                content_rowid='lexicon_row_id',
+                tokenize='unicode61'
+            );
+
+            CREATE TRIGGER IF NOT EXISTS lexicon_after_insert AFTER INSERT ON lexicon_entries BEGIN
+                INSERT INTO lexicon_search(rowid, lemma, transliteration, gloss, definition)
+                VALUES (new.lexicon_row_id, new.lemma, new.transliteration, new.gloss, new.definition);
+            END;
+            CREATE TRIGGER IF NOT EXISTS lexicon_after_delete AFTER DELETE ON lexicon_entries BEGIN
+                INSERT INTO lexicon_search(lexicon_search, rowid, lemma, transliteration, gloss, definition)
+                VALUES ('delete', old.lexicon_row_id, old.lemma, old.transliteration, old.gloss, old.definition);
+            END;
 
             CREATE VIRTUAL TABLE IF NOT EXISTS passage_search USING fts5(
                 text,
@@ -296,6 +340,86 @@ class EvidenceStore:
             )
         self.add_source(metadata, passages)
 
+    def import_lexicon_artifact(
+        self,
+        artifact_path: str | Path,
+        source_registry_path: str | Path,
+    ) -> None:
+        path = Path(artifact_path)
+        registry = load_json(source_registry_path)
+        payload = load_json(path)
+        source_id = str(payload.get("source_id", ""))
+        matches = [
+            item for item in registry.get("sources", []) if item.get("source_id") == source_id
+        ]
+        if len(matches) != 1:
+            raise EvidenceStoreError(
+                f"source registry must contain exactly one entry for {source_id}"
+            )
+        source = matches[0]
+        actual_hash = file_sha256(path)
+        if source.get("status") != "approved":
+            raise EvidenceStoreError(f"source is not approved: {source_id}")
+        if str(source.get("sha256", "")).lower() != actual_hash:
+            raise EvidenceStoreError(f"artifact digest does not match source registry: {source_id}")
+        if source.get("revision") != payload.get("revision"):
+            raise EvidenceStoreError(
+                f"artifact revision does not match source registry: {source_id}"
+            )
+        entries = [
+            LexiconEntry(
+                source_id=source_id,
+                entry_id=str(item["entry_id"]),
+                language=str(item["language"]),
+                lemma=str(item["lemma"]),
+                transliteration=str(item.get("transliteration", "")),
+                gloss=str(item.get("gloss", "")),
+                definition=str(item["definition"]),
+                source_ref=str(item["source_ref"]),
+            )
+            for item in payload.get("entries", [])
+        ]
+        if not entries:
+            raise EvidenceStoreError("a lexicon artifact must contain entries")
+        metadata = SourceMetadata(
+            source_id=source_id,
+            title=str(source["title"]),
+            role=str(source["role"]),
+            revision=str(source["revision"]),
+            sha256=actual_hash,
+        )
+        with self.connection:
+            self.connection.execute(
+                "INSERT INTO sources(source_id, title, role, revision, sha256, status, organizational) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                (
+                    metadata.source_id,
+                    metadata.title,
+                    metadata.role,
+                    metadata.revision,
+                    metadata.sha256,
+                    metadata.status,
+                ),
+            )
+            self.connection.executemany(
+                """
+                INSERT INTO lexicon_entries(source_id, entry_id, language, lemma, transliteration, gloss, definition, source_ref)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        item.source_id,
+                        item.entry_id,
+                        item.language,
+                        item.lemma,
+                        item.transliteration,
+                        item.gloss,
+                        item.definition,
+                        item.source_ref,
+                    )
+                    for item in entries
+                ],
+            )
+
     def search(
         self,
         query: str,
@@ -330,11 +454,64 @@ class EvidenceStore:
         ).fetchone()
         return self._row_to_passage(row) if row else None
 
+    def search_lexicon(
+        self,
+        query: str,
+        *,
+        language: str | None = None,
+        limit: int = 12,
+    ) -> list[LexiconEntry]:
+        if not 1 <= limit <= 100:
+            raise EvidenceStoreError("search limit must be between 1 and 100")
+        terms = list(dict.fromkeys(re.findall(r"[\w]+", query.casefold(), flags=re.UNICODE)))
+        if not terms:
+            return []
+        fts_query = " OR ".join(f'"{term.replace(chr(34), "")}"' for term in terms[:30])
+        rows = self.connection.execute(
+            """
+            SELECT e.*
+            FROM lexicon_search
+            JOIN lexicon_entries e ON e.lexicon_row_id = lexicon_search.rowid
+            WHERE lexicon_search MATCH ? AND (? IS NULL OR e.language = ?)
+            ORDER BY bm25(lexicon_search), e.source_id, e.entry_id
+            LIMIT ?
+            """,
+            (fts_query, language, language, limit),
+        ).fetchall()
+        return [self._row_to_lexicon_entry(row) for row in rows]
+
     def export_corpora(self, passages: list[Passage]) -> dict[str, dict[str, str]]:
         result: dict[str, dict[str, str]] = {}
         for passage in passages:
             result.setdefault(passage.source_id, {})[passage.reference] = passage.text
         return result
+
+    def citation_corpora(self) -> dict[str, dict[str, str]]:
+        """Export Scripture passages only; lexicon definitions are never citation corpora."""
+        rows = self.connection.execute(
+            """
+            SELECT p.* FROM passages p
+            JOIN sources s ON s.source_id = p.source_id
+            WHERE s.organizational = 0
+            ORDER BY p.source_id, p.book, p.chapter, p.verse_start
+            """
+        ).fetchall()
+        return self.export_corpora([self._row_to_passage(row) for row in rows])
+
+    def source_inventory(self) -> list[dict[str, object]]:
+        rows = self.connection.execute(
+            """
+            SELECT s.source_id, s.role, s.revision, s.sha256,
+                   COUNT(DISTINCT p.passage_id) AS passage_count,
+                   COUNT(DISTINCT l.lexicon_row_id) AS lexicon_entry_count
+            FROM sources s
+            LEFT JOIN passages p ON p.source_id = s.source_id
+            LEFT JOIN lexicon_entries l ON l.source_id = s.source_id
+            GROUP BY s.source_id, s.role, s.revision, s.sha256
+            ORDER BY s.source_id
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def approved_source_ids(self, *, include_organizational: bool = False) -> set[str]:
         rows = self.connection.execute(
@@ -459,4 +636,17 @@ class EvidenceStore:
             language=row["language"],
             text=row["text"],
             context=row["context"],
+        )
+
+    @staticmethod
+    def _row_to_lexicon_entry(row: sqlite3.Row) -> LexiconEntry:
+        return LexiconEntry(
+            source_id=row["source_id"],
+            entry_id=row["entry_id"],
+            language=row["language"],
+            lemma=row["lemma"],
+            transliteration=row["transliteration"],
+            gloss=row["gloss"],
+            definition=row["definition"],
+            source_ref=row["source_ref"],
         )

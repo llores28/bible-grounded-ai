@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "packages": [
+    {
+      "source_id": "hebrew_lexicon_openscriptures",
+      "revision": "openscriptures-hebrewlexicon-21c9add13bc727d3a951361778e97e3ff7afd1ce",
+      "parser": "openscriptures_hebrew_lexicon",
+      "expected_entry_count": 20519,
+      "expected_language_counts": {
+        "Aramaic": 1505,
+        "Hebrew": 16386,
+        "Hebrew/Aramaic proper name": 2628
+      },
+      "canonical_artifact_sha256": "b4676e230e2856ed4b91a34bd60a42fc189fa799d79bbdf8ed44cb707421287c",
+      "downloads": [
+        {
+          "filename": "HebrewStrong.xml",
+          "url": "https://raw.githubusercontent.com/openscriptures/HebrewLexicon/21c9add13bc727d3a951361778e97e3ff7afd1ce/HebrewStrong.xml",
+          "sha256": "a628f4f89f8bdaf2483fd3faf1abc8653cc6717758dfc9f24beb7571d9bdd0c4"
+        },
+        {
+          "filename": "BrownDriverBriggs.xml",
+          "url": "https://raw.githubusercontent.com/openscriptures/HebrewLexicon/21c9add13bc727d3a951361778e97e3ff7afd1ce/BrownDriverBriggs.xml",
+          "sha256": "2b52658a4323d91674cda4090ab8b3ebddfff640f4f18143c28300e80b2c38f8"
+        },
+        {
+          "filename": "LexicalIndex.xml",
+          "url": "https://raw.githubusercontent.com/openscriptures/HebrewLexicon/21c9add13bc727d3a951361778e97e3ff7afd1ce/LexicalIndex.xml",
+          "sha256": "8f7a605c58899d2f44430149c143c00903976e1e91232476677972a69e5bc85f"
+        },
+        {
+          "filename": "HebrewLexicon-readme.md",
+          "url": "https://raw.githubusercontent.com/openscriptures/HebrewLexicon/21c9add13bc727d3a951361778e97e3ff7afd1ce/readme.md",
+          "sha256": "9a129c25674387c494571c3828aa3a8eb78459c165e275c313ae26994ce8ff22"
+        }
+      ]
+    },
+    {
+      "source_id": "koine_greek_lexicon_abbott_smith",
+      "revision": "abbott-smith-8c00cb244761aa23659421a8cbbbf7a3b27b7d59",
+      "parser": "abbott_smith_tei",
+      "expected_entry_count": 6153,
+      "expected_language_counts": {"Koine Greek": 6153},
+      "canonical_artifact_sha256": "7580c9a860a72e8052989712bb7b57670a022b5f4996df580edc39c3409906ba",
+      "downloads": [
+        {
+          "filename": "abbott-smith.tei.xml",
+          "url": "https://raw.githubusercontent.com/translatable-exegetical-tools/Abbott-Smith/8c00cb244761aa23659421a8cbbbf7a3b27b7d59/abbott-smith.tei.xml",
+          "sha256": "99821bee411626b4aa3e674040297b54b267eff86cb4f9b7ef69a8bdb18b6f90"
+        },
+        {
+          "filename": "Abbott-Smith-README.md",
+          "url": "https://raw.githubusercontent.com/translatable-exegetical-tools/Abbott-Smith/8c00cb244761aa23659421a8cbbbf7a3b27b7d59/README.md",
+          "sha256": "8c67a8c904d8cbf2b66a9a6eaaed19cc5462b24edec3dc07ee689d30140f2c59"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "locked_on": "2026-08-11",
+  "policy": "Downloads are accepted only when HTTPS, upstream SHA-256, license-evidence SHA-256, revision, parser, corpus cardinality, and canonical artifact SHA-256 all match this lock.",
+  "packages": [
+    {
+      "source_id": "KJV_EBIBLE_1769",
+      "revision": "ebible-eng-kjv2006-2026-05-16",
+      "parser": "usfm_zip",
+      "expected_book_count": 66,
+      "expected_passage_count": 31102,
+      "download": {
+        "url": "https://ebible.org/Scriptures/eng-kjv2006_usfm.zip",
+        "filename": "eng-kjv2006_usfm.zip",
+        "sha256": "f8fea4f43feebce858bfb7810a1362a62e187c03e1eff833b1f3d6618a32c781"
+      },
+      "license_evidence": {
+        "url": "https://ebible.org/eng-kjv2006/copyright.htm",
+        "filename": "kjv-copyright.html",
+        "sha256": "c7d9c154e3d69bdc76fb34ad8891481ce48ca057dd8dd482dcbe897023ec230b"
+      },
+      "canonical_artifact_sha256": "c1ecad18e4db82fd5e21ba98849174279a90d7d278a17dba2a45a1432a46617e"
+    },
+    {
+      "source_id": "OSHB_WLC_MORPHHB",
+      "revision": "6a5db284c715c18b239422e57bb89684e6a19f00",
+      "parser": "osis_zip",
+      "expected_book_count": 39,
+      "expected_passage_count": 23213,
+      "download": {
+        "url": "https://github.com/openscriptures/morphhb/releases/download/v.2.2/OSHB-v.2.2.zip",
+        "filename": "OSHB-v.2.2.zip",
+        "sha256": "02f8711a4bd6ee322e7009beae158a51a63ca61ec4e90250ae261149c616c399"
+      },
+      "license_evidence": {
+        "url": "https://raw.githubusercontent.com/openscriptures/morphhb/6a5db284c715c18b239422e57bb89684e6a19f00/LICENSE.md",
+        "filename": "oshb-license.md",
+        "sha256": "9bf4a2890c25372e4c1dc750d550bfb4eacfbfcb63c53123b0628159370d1878"
+      },
+      "canonical_artifact_sha256": "4cd6358daf1cbce632faaef378e206033490c5ec2a820a131711678fba26a401"
+    },
+    {
+      "source_id": "SBLGNT_FAITHLIFE",
+      "revision": "c4d241a9c1c479a55b989ba35a4976c1d0b8052c",
+      "parser": "sblgnt_text_zip",
+      "expected_book_count": 27,
+      "expected_passage_count": 7939,
+      "download": {
+        "url": "https://codeload.github.com/Faithlife/SBLGNT/zip/c4d241a9c1c479a55b989ba35a4976c1d0b8052c",
+        "filename": "Faithlife-SBLGNT-c4d241a9.zip",
+        "sha256": "4fc2659ce10ec6f57552f22e039de927ed3e417c7b5a757f34f05dae530e4c0f"
+      },
+      "license_evidence": {
+        "url": "https://raw.githubusercontent.com/Faithlife/SBLGNT/c4d241a9c1c479a55b989ba35a4976c1d0b8052c/LICENSE",
+        "filename": "sblgnt-license.txt",
+        "sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661"
+      },
+      "canonical_artifact_sha256": "34da521d2b3b15f37a78c7de224bc088ec7d8d1f89e361ac165b9bca6e0992ca"
+    },
+    {
+      "source_id": "MORPHGNT_SBLGNT",
+      "revision": "aaed91e57c8e4a8dc9a2383e129ca5e75fe6393d",
+      "parser": "morphgnt_zip",
+      "expected_book_count": 27,
+      "expected_passage_count": 7927,
+      "download": {
+        "url": "https://codeload.github.com/morphgnt/sblgnt/zip/aaed91e57c8e4a8dc9a2383e129ca5e75fe6393d",
+        "filename": "MorphGNT-aaed91e5.zip",
+        "sha256": "1d5716fddff0a7f83abe1f076ea00321e19e774f196776c7257a81d7a507922c"
+      },
+      "license_evidence": {
+        "url": "https://raw.githubusercontent.com/morphgnt/sblgnt/aaed91e57c8e4a8dc9a2383e129ca5e75fe6393d/README.md",
+        "filename": "morphgnt-readme.md",
+        "sha256": "043bb6c0d654e85fa8a8db19e177ee035623e23b7ff1556e5431ad95184d5830"
+      },
+      "canonical_artifact_sha256": "04510e899270225bb84f7f2b1851971e668735d9b55280dfb4d239d839867fbd"
+    }
+  ]
+}

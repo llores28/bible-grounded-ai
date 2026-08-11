@@ -9,6 +9,7 @@ from typing import Any
 
 from .arithmetic import verify_equation
 from .canon import CanonRegistry
+from .evidence_store import file_sha256
 from .registry import RegistryError, load_commandment_rules, load_json, load_prophetic_rules
 
 
@@ -42,11 +43,22 @@ _REQUIRED_FILES = (
     "configs/commandments.json",
     "configs/canon.json",
     "configs/data/source_registry.json",
+    "configs/data/source_packages.json",
+    "configs/data/lexicon_packages.json",
     "configs/training/apertus_8b_qlora.json",
     "configs/training/apertus_8b_dpo.json",
     "data/registry/dataset_manifest.json",
     "evals/sealed/manifest.json",
 )
+
+_REQUIRED_SOURCE_ROLES = {
+    "primary_english_display",
+    "operational_hebrew_aramaic",
+    "controlling_new_testament_greek",
+    "operational_greek_morphology",
+    "operational_hebrew_aramaic_lexicon",
+    "operational_koine_greek_lexicon",
+}
 
 
 class ProjectPreflight:
@@ -149,12 +161,7 @@ class ProjectPreflight:
 
         try:
             sources = load_json(self.root / "configs/data/source_registry.json")["sources"]
-            required_roles = {
-                "primary_english_display",
-                "operational_hebrew_aramaic",
-                "controlling_new_testament_greek",
-                "operational_greek_morphology",
-            }
+            required_roles = _REQUIRED_SOURCE_ROLES
             approved_roles = {
                 source["role"]
                 for source in sources
@@ -172,8 +179,60 @@ class ProjectPreflight:
                     else f"unapproved or unpinned roles: {missing_roles}",
                 )
             )
+            source_packages = load_json(
+                self.root / "configs/data/source_packages.json"
+            )["packages"]
+            lexicon_packages = load_json(
+                self.root / "configs/data/lexicon_packages.json"
+            )["packages"]
+            locked = {item["source_id"]: item for item in source_packages + lexicon_packages}
+            approved = [item for item in sources if item.get("role") in required_roles]
+            lock_errors = []
+            for source in approved:
+                package = locked.get(source["source_id"])
+                if package is None:
+                    lock_errors.append(f"{source['source_id']}: lock missing")
+                    continue
+                if package.get("revision") != source.get("revision"):
+                    lock_errors.append(f"{source['source_id']}: revision mismatch")
+                if package.get("canonical_artifact_sha256") != source.get("sha256"):
+                    lock_errors.append(f"{source['source_id']}: canonical digest mismatch")
+            checks.append(
+                PreflightCheck(
+                    "source_package_locks",
+                    not lock_errors and len(approved) == len(required_roles),
+                    "registry approvals match immutable package locks"
+                    if not lock_errors
+                    else "; ".join(lock_errors),
+                )
+            )
         except (RegistryError, KeyError, TypeError) as exc:
             checks.append(PreflightCheck("approved_textual_sources", False, str(exc)))
+
+        try:
+            evidence_manifest_path = self.root / "data/index/evidence_manifest.json"
+            evidence_manifest = load_json(evidence_manifest_path)
+            database_path = self.root / "data/index/biblical_evidence.sqlite3"
+            corpus_path = self.root / "data/index/citation_corpus.json"
+            inventory_roles = {item["role"] for item in evidence_manifest["inventory"]}
+            evidence_ready = (
+                inventory_roles >= _REQUIRED_SOURCE_ROLES
+                and database_path.is_file()
+                and corpus_path.is_file()
+                and file_sha256(database_path) == evidence_manifest["database_sha256"]
+                and file_sha256(corpus_path) == evidence_manifest["citation_corpus_sha256"]
+            )
+            checks.append(
+                PreflightCheck(
+                    "built_evidence_store",
+                    evidence_ready,
+                    "all pinned Scripture and lexicons are imported with matching digests"
+                    if evidence_ready
+                    else "run build-evidence and preserve its matching manifest",
+                )
+            )
+        except (RegistryError, KeyError, TypeError, OSError) as exc:
+            checks.append(PreflightCheck("built_evidence_store", False, str(exc)))
 
         try:
             manifest = load_json(self.root / "data/registry/dataset_manifest.json")
@@ -190,6 +249,7 @@ class ProjectPreflight:
                     split["accepted_count"] >= split["target_minimum"]
                     and path.is_file()
                     and bool(split["sha256"])
+                    and file_sha256(path) == split["sha256"]
                 )
                 split_checks.append(
                     (split_name, passed, split["accepted_count"], split["target_minimum"])

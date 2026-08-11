@@ -5,7 +5,7 @@ Review cadence: before each training run, evaluation release, and policy change
 
 | ID | Risk | Primary controls | Acceptance evidence | Current status |
 | --- | --- | --- | --- | --- |
-| R-001 | Fabricated verse, quotation, source-language form, or citation | Immutable approved corpus; exact verifier; retrieval IDs; correction gate | 100% quote exactness, >=99% citation accuracy, zero fabricated sources | Open: corpus pending |
+| R-001 | Fabricated verse, quotation, source-language form, or citation | Immutable approved package locks; exact verifier; separate lexicon store; retrieval IDs; correction gate | 100% quote exactness, >=99% citation accuracy, zero fabricated sources | Open: reproducible import implemented; reviewed datasets pending |
 | R-002 | Denominational preference masquerades as biblical evidence | Evidence classes; blinded review; organization weight 0; leakage scan | Zero organizational-source leakage; affiliation audit | Controlled in schema; review pending |
 | R-003 | Historicist inference presented as explicit text | Prophetic registry; unit preservation; school labels; counter-readings | 100% arithmetic; class-label evals; no invented anchors | Controlled in registry |
 | R-004 | Numerology or hidden-code overclaim | Pre-registration; controls; robustness tests; falsification requirement | Zero accepted unsupported hidden-code claims | Test corpus pending |

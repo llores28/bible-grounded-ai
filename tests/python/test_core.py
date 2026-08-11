@@ -29,6 +29,7 @@ from biblical_moral_ai.evidence_store import (  # noqa: E402
     file_sha256,
 )
 from biblical_moral_ai.inference import BiblicalMoralAgent, LocalChatBackend  # noqa: E402
+from biblical_moral_ai.pilot import PilotWorkflow  # noqa: E402
 from biblical_moral_ai.pipeline import InferenceReviewPipeline  # noqa: E402
 from biblical_moral_ai.policy import CommandmentPolicyEngine  # noqa: E402
 from biblical_moral_ai.preflight import ProjectPreflight  # noqa: E402
@@ -420,6 +421,54 @@ class DatasetTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_jsonl(path)
 
+    def test_sensitive_categories_and_license_decisions_are_fail_closed(self) -> None:
+        review = {
+            "decision": "approve",
+            "rationale": "independently verified",
+            "independent": True,
+            "affiliations_disclosed": True,
+        }
+        record = {
+            "record_id": "SFT-GOVERNANCE",
+            "scenario_id": "SCENARIO-GOVERNANCE",
+            "category": "prophecy",
+            "status": "accepted",
+            "high_impact": False,
+            "answer": valid_answer().to_dict(),
+            "provenance": {
+                "author_id": "A1",
+                "created_at": "2026-08-11T00:00:00Z",
+                "source_ids": ["KJV_TEST"],
+                "license_check_ids": {"KJV_TEST": "WRONG"},
+            },
+            "reviews": [{**review, "reviewer_id": "R1"}],
+        }
+        validator = ReviewedDatasetValidator(
+            make_pipeline(),
+            source_registry={
+                "sources": [
+                    {
+                        "source_id": "KJV_TEST",
+                        "status": "approved",
+                        "approval": {"decision_id": "LIC-KJV"},
+                    }
+                ]
+            },
+            reviewer_registry={
+                "reviewers": [
+                    {
+                        "reviewer_id": "R1",
+                        "status": "active",
+                        "affiliations_disclosed": True,
+                    }
+                ]
+            },
+        )
+        report = validator.validate_sft([record])
+        codes = {issue.code for issue in report.issues}
+        self.assertIn("SENSITIVE_CATEGORY_NOT_HIGH_IMPACT", codes)
+        self.assertIn("LICENSE_DECISION_MISMATCH", codes)
+
 
 class EvidenceAndInferenceTests(unittest.TestCase):
     @staticmethod
@@ -512,6 +561,55 @@ class EvidenceAndInferenceTests(unittest.TestCase):
                     registry_path,
                     ROOT / "configs/canon.json",
                 )
+
+    def test_lexicon_is_searchable_but_never_exported_as_scripture(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "lexicon.json"
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "source_id": "LEXICON_TEST",
+                        "revision": "r1",
+                        "entries": [
+                            {
+                                "entry_id": "G26",
+                                "language": "Koine Greek",
+                                "lemma": "ἀγάπη",
+                                "transliteration": "agape",
+                                "gloss": "love",
+                                "definition": "A test dictionary definition.",
+                                "source_ref": "fixture#G26",
+                            }
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            registry = root / "registry.json"
+            registry.write_text(
+                json.dumps(
+                    {
+                        "sources": [
+                            {
+                                "source_id": "LEXICON_TEST",
+                                "title": "Lexicon fixture",
+                                "role": "operational_koine_greek_lexicon",
+                                "revision": "r1",
+                                "sha256": file_sha256(artifact),
+                                "status": "approved",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with EvidenceStore() as store:
+                store.import_lexicon_artifact(artifact, registry)
+                self.assertEqual(store.search_lexicon("agape")[0].lemma, "ἀγάπη")
+                self.assertEqual(store.citation_corpora(), {})
 
     def test_canonical_graph_requires_real_nonorganizational_endpoints(self) -> None:
         with EvidenceStore() as store:
@@ -728,7 +826,7 @@ class ReleaseAndProjectTests(unittest.TestCase):
         readiness = preflight.training_readiness()
         self.assertFalse(readiness.ready)
         failed = {check.name for check in readiness.checks if not check.passed}
-        self.assertIn("approved_textual_sources", failed)
+        self.assertNotIn("approved_textual_sources", failed)
         self.assertIn("reviewed_training_data", failed)
 
     def test_public_eval_covers_all_commandments(self) -> None:
@@ -744,6 +842,12 @@ class ReleaseAndProjectTests(unittest.TestCase):
         report = inspect_training_request("configs/training/apertus_8b_qlora.json", root=ROOT)
         self.assertEqual(report["stage"], "sft")
         self.assertFalse(report["project_ready"])
+
+    def test_pilot_preflight_remains_blocked_without_human_reviewers_and_data(self) -> None:
+        report = PilotWorkflow(ROOT).readiness()
+        self.assertFalse(report.ready)
+        failed = {check.name for check in report.checks if not check.passed}
+        self.assertIn("pilot_reviewers", failed)
 
     def test_render_contains_required_public_sections(self) -> None:
         rendered = render_moral_answer(valid_answer())

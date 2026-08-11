@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("validate", "lint", "test", "preflight", "all")]
+    [ValidateSet("validate", "lint", "test", "pilot-preflight", "preflight", "all")]
     [string]$Task = "all"
 )
 
@@ -27,6 +27,10 @@ switch ($Task) {
     "test" { Invoke-Test }
     "preflight" {
         python -m biblical_moral_ai --root $PSScriptRoot preflight
+        exit $LASTEXITCODE
+    }
+    "pilot-preflight" {
+        python -m biblical_moral_ai --root $PSScriptRoot pilot-preflight
         exit $LASTEXITCODE
     }
     "all" {

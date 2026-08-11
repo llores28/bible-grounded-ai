@@ -16,12 +16,16 @@ python -m biblical_moral_ai validate
 python -m unittest discover -s tests/python -v
 ```
 
-`validate` checks implementation integrity. `preflight` is expected to return blocked until approved text corpora and the minimum reviewed datasets exist:
+`validate` checks implementation integrity. First reproduce every approved source and its evidence store:
 
 ```powershell
+python -m biblical_moral_ai build-evidence --fetch
+python -m biblical_moral_ai pilot-preflight
 python -m biblical_moral_ai preflight
 python -m biblical_moral_ai cuda-check --minimum-vram-gib 24
 ```
+
+Dictionary data is auxiliary evidence: `search-lexicon` can query Hebrew, Aramaic, and Koine Greek entries, but those definitions never count as Scripture quotations.
 
 ## Environment
 
@@ -39,6 +43,30 @@ Record `nvidia-smi`, driver version, CUDA runtime reported by PyTorch, GPU name,
 6. Keep sealed acceptance content with an independent custodian.
 
 Candidate doctrine outlines are not training data and never count toward minimums.
+
+## Pilot before production
+
+The first GPU run is limited to a two-step smoke test after all of these are real:
+
+1. 50 accepted SFT records, 20 accepted preference pairs, and 25 accepted evaluation cases in `data/registry/pilot_manifest.json`.
+2. At least two active reviewers in `configs/reviewers.json`, with disclosed affiliations and review independence from each author.
+3. Two independent approvals for every prophecy, abuse, violence, force, or disputed-doctrine record; disagreements must be adjudicated before acceptance.
+4. Exact source approval decision IDs, exact Scripture quotations, CPU policy checks, dataset hashes, and the built-evidence manifest all match.
+
+Then materialize the reviewed records and inspect the pilot request:
+
+```powershell
+python -m biblical_moral_ai materialize-pilot
+python -m biblical_moral_ai train configs/training/apertus_8b_qlora_pilot.json
+```
+
+Only on a Lightning AI L4 (or equivalent CUDA host), execute the deliberately smoke-test-only config:
+
+```powershell
+python -m biblical_moral_ai train configs/training/apertus_8b_qlora_pilot.json --execute --smoke-test
+```
+
+The pilot config rejects execution without `--smoke-test`. Passing it never satisfies the separate 3,000/1,000 production-data gate.
 
 ## SFT
 

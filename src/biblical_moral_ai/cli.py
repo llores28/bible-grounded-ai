@@ -9,9 +9,11 @@ from typing import Any
 
 from .arithmetic import calculate, verify_equation
 from .citation import CitationVerifier
+from .corpus_build import build_approved_evidence
 from .evidence_store import EvidenceStore
 from .hardware import inspect_cuda
 from .inference import BiblicalMoralAgent, LocalChatBackend
+from .pilot import PilotWorkflow
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .preflight import ProjectPreflight
@@ -43,6 +45,19 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("validate", help="validate repository structure and registries")
     commands.add_parser("preflight", help="check whether full training is allowed")
+    commands.add_parser("pilot-preflight", help="validate the 50/20/25 reviewed pilot")
+    commands.add_parser(
+        "materialize-pilot", help="materialize training rows after pilot preflight passes"
+    )
+    build = commands.add_parser(
+        "build-evidence", help="fetch, verify, and atomically build all approved evidence"
+    )
+    build.add_argument("--cache", default="data/cache/upstream")
+    build.add_argument("--artifacts", default="data/artifacts/canonical")
+    build.add_argument("--database", default="data/index/biblical_evidence.sqlite3")
+    build.add_argument("--corpus", default="data/index/citation_corpus.json")
+    build.add_argument("--manifest", default="data/index/evidence_manifest.json")
+    build.add_argument("--fetch", action="store_true")
     cuda = commands.add_parser("cuda-check", help="inspect local CUDA readiness")
     cuda.add_argument("--minimum-vram-gib", type=float, default=24.0)
     arithmetic = commands.add_parser("calculate", help="run safe decimal arithmetic")
@@ -65,6 +80,11 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("query")
     search.add_argument("--database", default="data/index/biblical_evidence.sqlite3")
     search.add_argument("--limit", type=int, default=12)
+    lexicon = commands.add_parser("search-lexicon", help="search auxiliary language dictionaries")
+    lexicon.add_argument("query")
+    lexicon.add_argument("--database", default="data/index/biblical_evidence.sqlite3")
+    lexicon.add_argument("--language")
+    lexicon.add_argument("--limit", type=int, default=12)
     answer = commands.add_parser(
         "answer", help="run retrieval-first inference against a local endpoint"
     )
@@ -90,6 +110,30 @@ def main(argv: list[str] | None = None) -> int:
         report = ProjectPreflight(root).training_readiness()
         _json(report.to_dict())
         return 0 if report.ready else 2
+    if args.command == "pilot-preflight":
+        report = PilotWorkflow(root).readiness()
+        _json(report.to_dict())
+        return 0 if report.ready else 2
+    if args.command == "materialize-pilot":
+        try:
+            outputs = PilotWorkflow(root).materialize()
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json({"status": "materialized", "outputs": outputs})
+        return 0
+    if args.command == "build-evidence":
+        result = build_approved_evidence(
+            root=root,
+            cache_dir=root / args.cache,
+            artifact_dir=root / args.artifacts,
+            database_path=root / args.database,
+            citation_corpus_path=root / args.corpus,
+            manifest_path=root / args.manifest,
+            fetch=args.fetch,
+        )
+        _json(result.to_dict())
+        return 0
     if args.command == "cuda-check":
         report = inspect_cuda(minimum_vram_gib=args.minimum_vram_gib)
         _json(report.to_dict())
@@ -133,6 +177,29 @@ def main(argv: list[str] | None = None) -> int:
                     "context": item.context,
                 }
                 for item in passages
+            ]
+        )
+        return 0
+    if args.command == "search-lexicon":
+        with EvidenceStore(root / args.database) as store:
+            entries = store.search_lexicon(
+                args.query,
+                language=args.language,
+                limit=args.limit,
+            )
+        _json(
+            [
+                {
+                    "source_id": item.source_id,
+                    "entry_id": item.entry_id,
+                    "language": item.language,
+                    "lemma": item.lemma,
+                    "transliteration": item.transliteration,
+                    "gloss": item.gloss,
+                    "definition": item.definition,
+                    "source_ref": item.source_ref,
+                }
+                for item in entries
             ]
         )
         return 0

@@ -23,6 +23,7 @@ The system is not intended to claim divine authority, moral consciousness, or re
 - [`src/biblical_moral_ai/`](src/biblical_moral_ai/) implements approved-source retrieval, canonical graph storage, exact citation checking, safe arithmetic, commandment and pastoral-safety checks, local inference, dataset validation, training preflight, and release gates.
 - [`schemas/`](schemas/) defines the machine-readable answer, review, corpus, preference, and release contracts.
 - [`configs/training/`](configs/training/) contains pinned Apertus 8B QLoRA SFT and DPO experiment configurations.
+- [`configs/data/source_packages.json`](configs/data/source_packages.json) and [`configs/data/lexicon_packages.json`](configs/data/lexicon_packages.json) lock the approved Scripture, morphology, Hebrew/Aramaic dictionary, and Koine Greek dictionary inputs.
 - [`evals/`](evals/) contains public adversarial cases, a sealed-set custody contract, and release-metric templates.
 - [`docs/Apertus_Bible_Grounded_AI_Master_Plan.md`](docs/Apertus_Bible_Grounded_AI_Master_Plan.md) is the v1.3 technical roadmap; [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) is the fail-closed CUDA training procedure.
 - [`app/`](app/) and [`public/`](public/) contain the public project website.
@@ -38,12 +39,20 @@ python -m ruff check src tests/python
 python -m unittest discover -s tests/python -v
 ```
 
-The training preflight is intentionally stricter and currently returns exit code `2` because approved corpora and reviewed datasets do not yet exist:
+Build the approved, digest-verified evidence store without committing third-party corpora:
 
 ```powershell
+python -m biblical_moral_ai build-evidence --fetch
+python -m biblical_moral_ai search-lexicon "חֶסֶד" --language Hebrew
+python -m biblical_moral_ai search-lexicon "ἀγάπη" --language "Koine Greek"
+```
+
+The pilot and production training preflights intentionally remain separate. Both currently return exit code `2` because real independently reviewed datasets do not yet exist:
+
+```powershell
+python -m biblical_moral_ai pilot-preflight
 python -m biblical_moral_ai preflight
-python -m biblical_moral_ai cuda-check --minimum-vram-gib 24
-python -m biblical_moral_ai train configs/training/apertus_8b_qlora.json
+python -m biblical_moral_ai train configs/training/apertus_8b_qlora_pilot.json
 ```
 
 See [`docs/TRAINING_RUNBOOK.md`](docs/TRAINING_RUNBOOK.md) before installing optional CUDA dependencies or executing a training run.
@@ -70,7 +79,7 @@ npm test
 
 ## Current status
 
-The governance, schemas, retrieval store, local inference gate, training launchers, public evaluation cases, and deterministic verification tests are implemented. The project remains pre-training: accepted expert-reviewed SFT examples are `0/3,000`, reviewed preference pairs are `0/1,000`, and sealed acceptance cases are `0/500`. All candidate biblical corpora remain pending exact-edition and legal approval, so no adapter has been trained and no scholar-facing release is authorized. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md).
+The approved Scripture and linguistic sources are pinned and the fail-closed import pipeline is implemented. The project remains pre-training: the smoke-test pilot is `0/50` SFT, `0/20` preference, and `0/25` evaluation records; production remains `0/3,000` SFT and `0/1,000` preference pairs. No adapter has been trained and no scholar-facing release is authorized. See [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md).
 
 ## Contributions
 
