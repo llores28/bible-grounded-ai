@@ -248,9 +248,11 @@ class PilotDraftWorkflow:
         from .pilot import PilotWorkflow
         from .pilot_candidates import PilotCandidateWorkflow
         from .review_ledger import ReviewLedgerValidator
+        from .reviewers import ReviewerWorkflow
 
         draft_report = self.audit()
         candidate_report = PilotCandidateWorkflow(self.root).audit()
+        reviewer_report = ReviewerWorkflow(self.root).audit_readiness()
         review_report = ReviewLedgerValidator(self.root).validate()
         pilot_report = PilotWorkflow(self.root).readiness()
         authoring_packet_path = self.root / "data/pilot/authoring_packets.jsonl"
@@ -258,6 +260,7 @@ class PilotDraftWorkflow:
         ready = (
             draft_report.passed
             and candidate_report.passed
+            and reviewer_report.passed
             and review_report.passed
             and pilot_report.ready
         )
@@ -288,6 +291,7 @@ class PilotDraftWorkflow:
             },
             "draft_audit": draft_report.to_dict(),
             "candidate_audit": candidate_report.to_dict(),
+            "reviewer_readiness": reviewer_report.to_dict(),
             "review_ledger": review_report.to_dict(),
             "pilot_preflight": pilot_report.to_dict(),
         }

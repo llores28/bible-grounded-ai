@@ -19,6 +19,7 @@ from .evidence_store import EvidenceStore, file_sha256
 from .pipeline import InferenceReviewPipeline
 from .policy import CommandmentPolicyEngine
 from .registry import load_commandment_rules, load_json
+from .reviewers import ReviewerWorkflow, is_active_reviewer, reviewer_is_qualified
 from .schemas import MoralAnswer, PipelineDecision
 
 
@@ -320,12 +321,17 @@ class PilotCandidateWorkflow:
             raise ValueError("build validated candidate review packets before assigning reviewers")
         packets = read_jsonl(packet_file)
         registry = load_json(self.root / "configs/reviewers.json")
+        readiness = ReviewerWorkflow(self.root).audit_readiness()
+        if not readiness.passed:
+            raise ValueError(
+                "reviewer readiness failed: "
+                + " | ".join(issue.message for issue in readiness.issues[:10])
+            )
+        allowed = {str(item) for item in registry.get("qualified_categories", [])}
         active = [
             item
             for item in registry.get("reviewers", [])
-            if item.get("status") == "active"
-            and item.get("affiliations_disclosed") is True
-            and item.get("independence_attested_on")
+            if is_active_reviewer(item, allowed_qualifications=allowed)
         ]
         if len(active) < 2:
             raise ValueError(
@@ -343,10 +349,7 @@ class PilotCandidateWorkflow:
                 reviewer
                 for reviewer in active
                 if reviewer.get("reviewer_id") != author_id
-                and (
-                    category in reviewer.get("qualified_categories", [])
-                    or "general" in reviewer.get("qualified_categories", [])
-                )
+                and reviewer_is_qualified(reviewer, category)
             ]
             if len(qualified) < required:
                 raise ValueError(

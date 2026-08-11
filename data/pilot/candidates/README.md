@@ -24,9 +24,10 @@ The controlled flow is:
 2. Run `build-authoring-packets` to generate ignored worksheets with exact evidence snapshots.
 3. To reproduce the starting points, run `seed-pilot-candidates --overwrite`. The command refuses to replace existing candidates unless `--overwrite` is explicit, because those files may contain human edits. Otherwise, author/revise complete candidate envelopes here with `status=candidate` and no reviews.
 4. Run `audit-pilot-candidates` and `build-candidate-review-packets`.
-5. Register real reviewers, run `assign-pilot-reviewers`, and collect blinded decisions in `data/pilot/reviews.jsonl` using `schemas/pilot-review.schema.json`.
-6. Record any disagreement in `data/pilot/adjudications.jsonl`. A revised candidate receives a new revision and fresh blinded reviews; adjudication cannot directly convert a disputed version into accepted data.
-7. Run `validate-review-ledger`, then `finalize-reviewed-pilot`. Only that command writes accepted split files and updates their manifest hashes and counts.
-8. Run `pilot-preflight`, `materialize-pilot`, and only then the smoke-test-only Lightning configuration.
+5. Build the recruitment kit, register real reviewers, and run `audit-reviewers`. A `general` qualification never covers a sensitive category.
+6. Run `assign-pilot-reviewers` and `export-assigned-review-kits`, then collect blinded decisions in `data/pilot/reviews.jsonl` using `schemas/pilot-review.schema.json`.
+7. Record any disagreement in `data/pilot/adjudications.jsonl`. A revised candidate receives a new revision and fresh blinded reviews; adjudication cannot directly convert a disputed version into accepted data.
+8. Run `validate-review-ledger`, then `finalize-reviewed-pilot`. Only that command writes accepted split files and updates their manifest hashes and counts.
+9. Run `pilot-preflight`, `materialize-pilot`, and only then the smoke-test-only Lightning configuration.
 
 Never invent reviewer identities or copy one review into another reviewer’s lane.

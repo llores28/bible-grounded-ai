@@ -17,6 +17,7 @@ from .policy import CommandmentPolicyEngine
 from .preflight import PreflightCheck, PreflightReport, ProjectPreflight
 from .registry import load_commandment_rules, load_json
 from .review_ledger import ReviewLedgerValidator
+from .reviewers import ReviewerWorkflow
 
 
 class PilotWorkflow:
@@ -42,18 +43,17 @@ class PilotWorkflow:
 
         try:
             reviewer_registry = load_json(self.root / "configs/reviewers.json")
-            active = [
-                item
-                for item in reviewer_registry["reviewers"]
-                if item.get("status") == "active"
-                and item.get("affiliations_disclosed") is True
-                and item.get("independence_attested_on")
-            ]
+            reviewer_readiness = ReviewerWorkflow(self.root).audit_readiness()
             checks.append(
                 PreflightCheck(
                     "pilot_reviewers",
-                    len(active) >= 2,
-                    f"active reviewers with disclosed affiliations: {len(active)}/2",
+                    reviewer_readiness.passed,
+                    (
+                        f"active valid reviewers: {reviewer_readiness.active_valid_count}; "
+                        f"qualified capacity={reviewer_readiness.available_capacity}"
+                        if reviewer_readiness.passed
+                        else f"first issue: {reviewer_readiness.issues[0].code}"
+                    ),
                 )
             )
         except (KeyError, TypeError, ValueError, OSError) as exc:

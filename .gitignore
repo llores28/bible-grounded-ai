@@ -15,6 +15,7 @@ data/index/*.json
 data/pilot/authoring_packets.jsonl
 data/pilot/candidate_review_packets.jsonl
 data/audit/
+data/reviewer_kits/
 *.egg-info/
 /build/lib/
 *.tsbuildinfo

@@ -11,6 +11,11 @@ from typing import Any
 
 from .pipeline import InferenceReviewPipeline
 from .render import build_sft_messages, render_moral_answer
+from .reviewers import (
+    SENSITIVE_REVIEW_CATEGORIES,
+    is_active_reviewer,
+    reviewer_is_qualified,
+)
 from .schemas import MoralAnswer, PipelineDecision
 
 
@@ -46,7 +51,7 @@ def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
 
 
 class ReviewedDatasetValidator:
-    SENSITIVE_CATEGORIES = {"prophecy", "abuse", "violence", "force", "disputed_doctrine"}
+    SENSITIVE_CATEGORIES = SENSITIVE_REVIEW_CATEGORIES
 
     def __init__(
         self,
@@ -389,6 +394,10 @@ class ReviewedDatasetValidator:
                         )
                     )
         if self.reviewer_registry is not None:
+            allowed = {
+                str(item)
+                for item in self.reviewer_registry.get("qualified_categories", [])
+            }
             reviewers = {
                 str(item.get("reviewer_id")): item
                 for item in self.reviewer_registry.get("reviewers", [])
@@ -401,15 +410,23 @@ class ReviewedDatasetValidator:
                 reviewer = reviewers.get(reviewer_id)
                 if (
                     reviewer is None
-                    or reviewer.get("status") != "active"
-                    or reviewer.get("affiliations_disclosed") is not True
-                    or not reviewer.get("independence_attested_on")
+                    or not is_active_reviewer(
+                        reviewer, allowed_qualifications=allowed
+                    )
                 ):
                     issues.append(
                         DatasetIssue(
                             record_id,
                             "REVIEWER_NOT_REGISTERED",
                             f"reviewer is not active, disclosed, and attested: {reviewer_id}",
+                        )
+                    )
+                elif not reviewer_is_qualified(reviewer, record.get("category", "")):
+                    issues.append(
+                        DatasetIssue(
+                            record_id,
+                            "REVIEWER_NOT_QUALIFIED",
+                            f"reviewer is not qualified for {record.get('category', '')}: {reviewer_id}",
                         )
                     )
                 if reviewer_id == author_id:

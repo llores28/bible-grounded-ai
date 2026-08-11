@@ -11,7 +11,7 @@
     "independence_rule": {"type": "string", "minLength": 1},
     "affiliation_rule": {"type": "string", "minLength": 1},
     "required_reviewer_fields": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
-    "qualified_categories": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "qualified_categories": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["general", "prophecy", "abuse", "violence", "force", "disputed_doctrine"]}},
     "reviewers": {
       "type": "array",
       "items": {
@@ -24,7 +24,7 @@
           "affiliations_disclosed": {"type": "boolean"},
           "affiliations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
           "independence_attested_on": {"type": "string", "format": "date"},
-          "qualified_categories": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}
+          "qualified_categories": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["general", "prophecy", "abuse", "violence", "force", "disputed_doctrine"]}}
         }
       }
     }

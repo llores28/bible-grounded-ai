@@ -47,6 +47,8 @@ python -m biblical_moral_ai build-evidence --fetch
 python -m biblical_moral_ai audit-pilot-drafts
 python -m biblical_moral_ai build-authoring-packets
 python -m biblical_moral_ai audit-pilot-candidates
+python -m biblical_moral_ai build-reviewer-recruitment-kit
+python -m biblical_moral_ai audit-reviewers
 python -m biblical_moral_ai search-lexicon "חֶסֶד" --language Hebrew
 python -m biblical_moral_ai search-lexicon "ἀγάπη" --language "Koine Greek"
 ```

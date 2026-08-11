@@ -37,11 +37,21 @@ The candidate audit runs the deterministic commandment, safety, source approval,
 
 Populate `configs/reviewers.json` with real reviewers. Do not publish information beyond what each reviewer consents to disclose.
 
+Create the recruitment kit and inspect the exact capacity gaps before registering anyone:
+
 ```powershell
-python -m biblical_moral_ai assign-pilot-reviewers
+python -m biblical_moral_ai build-reviewer-recruitment-kit
+python -m biblical_moral_ai audit-reviewers
 ```
 
-Preference pairs and all prophecy, abuse, violence, force, and disputed-doctrine cases require two independent reviewers. Other SFT/evaluation candidates require at least one. Review decisions go in `data/pilot/reviews.jsonl` and follow `schemas/pilot-review.schema.json`. Every decision binds to the exact `packet_sha256`; changing a candidate invalidates its reviews.
+`general` qualifies a reviewer only for non-sensitive cases. Prophecy, abuse, violence, force, and disputed doctrine each require an explicit matching qualification. Two qualified reviewers are required for those lanes; a third qualified reviewer is recommended so a disagreement can be adjudicated by someone who did not submit a first-pass decision.
+
+```powershell
+python -m biblical_moral_ai assign-pilot-reviewers
+python -m biblical_moral_ai export-assigned-review-kits
+```
+
+The export command creates a separate deterministic ZIP for each assigned reviewer under the ignored `data/reviewer_kits/` directory. Each bundle contains only that reviewer's packet set and blank decision templates; it contains no other reviewer's decisions. Preference pairs and all prophecy, abuse, violence, force, and disputed-doctrine cases require two independent reviewers. Other SFT/evaluation candidates require at least one. Completed review decisions go in `data/pilot/reviews.jsonl` and follow `schemas/pilot-review.schema.json`. Every decision binds to the exact `packet_sha256`; changing a candidate invalidates its reviews.
 
 ## 4. Adjudicate without laundering disagreement
 

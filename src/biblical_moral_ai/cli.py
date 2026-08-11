@@ -23,6 +23,7 @@ from .preflight import ProjectPreflight
 from .registry import load_commandment_rules, load_json
 from .release import ReleaseGateEvaluator, ReleaseMetrics
 from .review_ledger import ReviewLedgerValidator
+from .reviewers import ReviewerWorkflow
 from .schemas import MoralAnswer
 from .training import TrainingBlockedError, inspect_training_request, run_training
 
@@ -77,6 +78,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands.add_parser(
         "assign-pilot-reviewers", help="assign qualified reviewers to validated candidates"
+    )
+    commands.add_parser(
+        "audit-reviewers", help="validate reviewer identities, qualifications, and coverage"
+    )
+    commands.add_parser(
+        "build-reviewer-recruitment-kit",
+        help="write non-approval templates and reviewer coverage requirements",
+    )
+    commands.add_parser(
+        "export-assigned-review-kits",
+        help="create separate blinded packet bundles for assigned reviewers",
     )
     commands.add_parser(
         "validate-review-ledger", help="validate blinded reviews and adjudications"
@@ -195,6 +207,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "assign-pilot-reviewers":
         try:
             result = PilotCandidateWorkflow(root).assign_reviewers()
+        except ValueError as exc:
+            _json({"status": "blocked", "reason": str(exc)})
+            return 2
+        _json(result)
+        return 0
+    if args.command == "audit-reviewers":
+        report = ReviewerWorkflow(root).audit_readiness()
+        _json(report.to_dict())
+        return 0 if report.passed else 2
+    if args.command == "build-reviewer-recruitment-kit":
+        result = ReviewerWorkflow(root).build_recruitment_kit()
+        _json(result)
+        return 0
+    if args.command == "export-assigned-review-kits":
+        try:
+            result = ReviewerWorkflow(root).export_assigned_kits()
         except ValueError as exc:
             _json({"status": "blocked", "reason": str(exc)})
             return 2

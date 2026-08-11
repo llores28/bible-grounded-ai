@@ -63,7 +63,10 @@ python -m biblical_moral_ai build-authoring-packets
 python -m biblical_moral_ai seed-pilot-candidates --overwrite  # only when replacing candidates deliberately
 python -m biblical_moral_ai audit-pilot-candidates
 python -m biblical_moral_ai build-candidate-review-packets
+python -m biblical_moral_ai build-reviewer-recruitment-kit
+python -m biblical_moral_ai audit-reviewers
 python -m biblical_moral_ai assign-pilot-reviewers
+python -m biblical_moral_ai export-assigned-review-kits
 python -m biblical_moral_ai validate-review-ledger
 python -m biblical_moral_ai finalize-reviewed-pilot
 python -m biblical_moral_ai write-pilot-audit-receipt

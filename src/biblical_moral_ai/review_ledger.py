@@ -13,6 +13,12 @@ from typing import Any
 from .dataset import read_jsonl
 from .evidence_store import file_sha256
 from .registry import load_json
+from .reviewers import (
+    SENSITIVE_REVIEW_CATEGORIES,
+    is_active_reviewer,
+    normalize_review_category,
+    reviewer_is_qualified,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +79,27 @@ class ReviewLedgerValidator:
                 ReviewLedgerIssue("LEDGER", "DUPLICATE_PACKET_ID", "packet item IDs must be unique")
             )
         for item_id, packet in packet_by_id.items():
+            split = str(packet.get("split", ""))
+            category = normalize_review_category(packet.get("category", ""))
+            if split not in {"sft", "preferences", "evals"}:
+                issues.append(
+                    ReviewLedgerIssue(
+                        item_id, "PACKET_SPLIT_INVALID", "packet split is invalid"
+                    )
+                )
+            expected_required = (
+                2
+                if split == "preferences" or category in SENSITIVE_REVIEW_CATEGORIES
+                else 1
+            )
+            if packet.get("required_independent_reviewers") != expected_required:
+                issues.append(
+                    ReviewLedgerIssue(
+                        item_id,
+                        "PACKET_REVIEWER_REQUIREMENT_INVALID",
+                        f"packet requires {expected_required} reviewer(s) for {split}/{category}",
+                    )
+                )
             candidate_digest = str(packet.get("candidate_record_sha256", ""))
             if not re.fullmatch(r"[a-f0-9]{64}", candidate_digest):
                 issues.append(
@@ -166,13 +193,67 @@ class ReviewLedgerValidator:
                 )
 
         reviewers_payload = load_json(self.root / "configs/reviewers.json")
+        allowed = {
+            str(item) for item in reviewers_payload.get("qualified_categories", [])
+        }
         active_reviewers = {
             str(item.get("reviewer_id")): item
             for item in reviewers_payload.get("reviewers", [])
-            if item.get("status") == "active"
-            and item.get("affiliations_disclosed") is True
-            and item.get("independence_attested_on")
+            if is_active_reviewer(item, allowed_qualifications=allowed)
         }
+        for item_id, assignment in assignment_by_id.items():
+            packet = packet_by_id.get(item_id)
+            if packet is None:
+                continue
+            reviewer_ids = assignment.get("reviewer_ids", [])
+            if not isinstance(reviewer_ids, list):
+                issues.append(
+                    ReviewLedgerIssue(
+                        item_id, "ASSIGNED_REVIEWERS_INVALID", "reviewer_ids must be a list"
+                    )
+                )
+                continue
+            unique_ids = set(map(str, reviewer_ids))
+            required = int(packet.get("required_independent_reviewers", 0))
+            if len(unique_ids) != len(reviewer_ids) or len(unique_ids) != required:
+                issues.append(
+                    ReviewLedgerIssue(
+                        item_id,
+                        "ASSIGNMENT_REVIEWER_COVERAGE_INVALID",
+                        f"assignment has {len(unique_ids)} unique reviewer(s); requires {required}",
+                    )
+                )
+            author_id = str(
+                packet.get("candidate_record", {}).get("provenance", {}).get(
+                    "author_id", ""
+                )
+            )
+            for reviewer_id in unique_ids:
+                reviewer = active_reviewers.get(reviewer_id)
+                if reviewer is None:
+                    issues.append(
+                        ReviewLedgerIssue(
+                            item_id,
+                            "ASSIGNED_REVIEWER_NOT_ACTIVE",
+                            f"assigned reviewer is not active and valid: {reviewer_id}",
+                        )
+                    )
+                elif not reviewer_is_qualified(reviewer, packet.get("category", "")):
+                    issues.append(
+                        ReviewLedgerIssue(
+                            item_id,
+                            "ASSIGNED_REVIEWER_NOT_QUALIFIED",
+                            f"assigned reviewer is not qualified: {reviewer_id}",
+                        )
+                    )
+                if reviewer_id == author_id:
+                    issues.append(
+                        ReviewLedgerIssue(
+                            item_id,
+                            "ASSIGNED_REVIEWER_IS_AUTHOR",
+                            "candidate author cannot be assigned as reviewer",
+                        )
+                    )
         reviews = read_jsonl(review_file)
         reviews_by_item: dict[str, list[dict[str, Any]]] = {}
         seen_review_ids: set[str] = set()
@@ -224,6 +305,20 @@ class ReviewLedgerValidator:
                     )
                 )
             packet = packet_by_id.get(item_id)
+            if (
+                packet is not None
+                and reviewer_id in active_reviewers
+                and not reviewer_is_qualified(
+                    active_reviewers[reviewer_id], packet.get("category", "")
+                )
+            ):
+                issues.append(
+                    ReviewLedgerIssue(
+                        item_id,
+                        "REVIEWER_NOT_QUALIFIED",
+                        f"reviewer is not qualified for {packet.get('category', '')}: {reviewer_id}",
+                    )
+                )
             if packet is None or review.get("packet_sha256") != packet.get("packet_sha256"):
                 issues.append(
                     ReviewLedgerIssue(
@@ -335,6 +430,21 @@ class ReviewLedgerValidator:
                         item_id,
                         "ADJUDICATOR_NOT_INDEPENDENT",
                         "adjudicator must be a distinct active reviewer",
+                    )
+                )
+            packet = packet_by_id.get(item_id)
+            if (
+                packet is not None
+                and adjudicator in active_reviewers
+                and not reviewer_is_qualified(
+                    active_reviewers[adjudicator], packet.get("category", "")
+                )
+            ):
+                issues.append(
+                    ReviewLedgerIssue(
+                        item_id,
+                        "ADJUDICATOR_NOT_QUALIFIED",
+                        f"adjudicator is not qualified for {packet.get('category', '')}",
                     )
                 )
             expected_review_ids = {str(item["review_id"]) for item in item_reviews}

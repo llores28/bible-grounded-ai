@@ -44,6 +44,10 @@ from biblical_moral_ai.release import (  # noqa: E402
 )
 from biblical_moral_ai.render import render_moral_answer  # noqa: E402
 from biblical_moral_ai.review_ledger import ReviewLedgerValidator  # noqa: E402
+from biblical_moral_ai.reviewers import (  # noqa: E402
+    ReviewerWorkflow,
+    reviewer_is_qualified,
+)
 from biblical_moral_ai.safety import PastoralSafetyChecker  # noqa: E402
 from biblical_moral_ai.schemas import (  # noqa: E402
     AssessmentVerdict,
@@ -446,6 +450,101 @@ class DatasetTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_jsonl(path)
 
+    def test_general_reviewer_cannot_cover_sensitive_category(self) -> None:
+        reviewer = {"qualified_categories": ["general"]}
+        self.assertTrue(reviewer_is_qualified(reviewer, "truthfulness"))
+        self.assertFalse(reviewer_is_qualified(reviewer, "prophecy"))
+        self.assertFalse(reviewer_is_qualified(reviewer, "disputed doctrine"))
+
+    def test_reviewer_readiness_and_blinded_exports_require_exact_qualification(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "configs/pilot").mkdir(parents=True)
+            (root / "data/pilot").mkdir(parents=True)
+            queue = {
+                "sft": [
+                    {
+                        "item_id": "SFT-DRAFT-001",
+                        "category": "prophecy",
+                    }
+                ],
+                "preferences": [],
+                "evals": [],
+            }
+            (root / "configs/pilot/draft_scenarios.json").write_text(
+                json.dumps(queue), encoding="utf-8"
+            )
+            registry = {
+                "schema_version": "1.0",
+                "status": "active",
+                "qualified_categories": ["general", "prophecy"],
+                "reviewers": [
+                    {
+                        "reviewer_id": f"REVIEWER-R{number}",
+                        "status": "active",
+                        "affiliations_disclosed": True,
+                        "affiliations": ["none"],
+                        "independence_attested_on": "2026-08-11",
+                        "qualified_categories": ["general"],
+                    }
+                    for number in (1, 2)
+                ],
+            }
+            registry_path = root / "configs/reviewers.json"
+            registry_path.write_text(json.dumps(registry), encoding="utf-8")
+            report = ReviewerWorkflow(root).audit_readiness()
+            self.assertFalse(report.passed)
+            self.assertIn(
+                "QUALIFIED_REVIEWER_COVERAGE_MISSING",
+                {issue.code for issue in report.issues},
+            )
+
+            for reviewer in registry["reviewers"]:
+                reviewer["qualified_categories"].append("prophecy")
+            registry_path.write_text(json.dumps(registry), encoding="utf-8")
+            self.assertTrue(ReviewerWorkflow(root).audit_readiness().passed)
+
+            unsigned_packet = {
+                "item_id": "SFT-DRAFT-001",
+                "split": "sft",
+                "category": "prophecy",
+                "required_independent_reviewers": 2,
+                "candidate_record": {"provenance": {"author_id": "AUTHOR-A"}},
+            }
+            canonical = json.dumps(
+                unsigned_packet,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            packet = {
+                **unsigned_packet,
+                "packet_sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            }
+            packet_path = root / "data/pilot/candidate_review_packets.jsonl"
+            packet_path.write_text(json.dumps(packet) + "\n", encoding="utf-8")
+            assignments = {
+                "schema_version": "1.0",
+                "candidate_packets_sha256": file_sha256(packet_path),
+                "reviewer_registry_sha256": file_sha256(registry_path),
+                "assignments": [
+                    {
+                        "item_id": "SFT-DRAFT-001",
+                        "packet_sha256": packet["packet_sha256"],
+                        "reviewer_ids": ["REVIEWER-R1", "REVIEWER-R2"],
+                    }
+                ],
+            }
+            (root / "data/pilot/reviewer_assignments.json").write_text(
+                json.dumps(assignments), encoding="utf-8"
+            )
+            exported = ReviewerWorkflow(root).export_assigned_kits()
+            self.assertEqual(exported["bundle_count"], 2)
+            for bundle in exported["bundles"].values():
+                self.assertTrue(Path(bundle["zip_path"]).is_file())
+
     def test_sensitive_categories_and_license_decisions_are_fail_closed(self) -> None:
         review = {
             "decision": "approve",
@@ -466,7 +565,7 @@ class DatasetTests(unittest.TestCase):
                 "source_ids": ["KJV_TEST"],
                 "license_check_ids": {"KJV_TEST": "WRONG"},
             },
-            "reviews": [{**review, "reviewer_id": "R1"}],
+            "reviews": [{**review, "reviewer_id": "REVIEWER-R1"}],
         }
         validator = ReviewedDatasetValidator(
             make_pipeline(),
@@ -480,11 +579,15 @@ class DatasetTests(unittest.TestCase):
                 ]
             },
             reviewer_registry={
+                "qualified_categories": ["general", "prophecy"],
                 "reviewers": [
                     {
-                        "reviewer_id": "R1",
+                        "reviewer_id": "REVIEWER-R1",
                         "status": "active",
                         "affiliations_disclosed": True,
+                        "affiliations": ["none"],
+                        "independence_attested_on": "2026-08-11",
+                        "qualified_categories": ["prophecy"],
                     }
                 ]
             },
@@ -500,12 +603,15 @@ class DatasetTests(unittest.TestCase):
             (root / "configs").mkdir()
             (root / "data/pilot").mkdir(parents=True)
             reviewer_registry = {
+                "qualified_categories": ["general"],
                 "reviewers": [
                     {
-                        "reviewer_id": "R1",
+                        "reviewer_id": "REVIEWER-R1",
                         "status": "active",
                         "affiliations_disclosed": True,
+                        "affiliations": ["none"],
                         "independence_attested_on": "2026-08-11",
+                        "qualified_categories": ["general"],
                     }
                 ]
             }
@@ -517,6 +623,9 @@ class DatasetTests(unittest.TestCase):
             )
             packet = {
                 "item_id": "SFT-DRAFT-001",
+                "split": "sft",
+                "category": "truthfulness",
+                "required_independent_reviewers": 1,
                 "candidate_record": candidate,
                 "candidate_record_sha256": hashlib.sha256(
                     candidate_canonical.encode("utf-8")
@@ -540,7 +649,7 @@ class DatasetTests(unittest.TestCase):
                     {
                         "item_id": "SFT-DRAFT-001",
                         "packet_sha256": packet["packet_sha256"],
-                        "reviewer_ids": ["R1"],
+                        "reviewer_ids": ["REVIEWER-R1"],
                     }
                 ],
             }
@@ -550,7 +659,7 @@ class DatasetTests(unittest.TestCase):
             review = {
                 "review_id": "REVIEW-1",
                 "item_id": "SFT-DRAFT-001",
-                "reviewer_id": "R1",
+                "reviewer_id": "REVIEWER-R1",
                 "packet_sha256": packet["packet_sha256"],
                 "decision": "approve",
                 "rationale": "The candidate and exact evidence were independently checked.",
@@ -564,6 +673,38 @@ class DatasetTests(unittest.TestCase):
             report = ReviewLedgerValidator(root).validate()
             self.assertTrue(report.passed, report.issues)
             self.assertEqual(report.consensus_approved_count, 1)
+
+            packet["category"] = "prophecy"
+            packet["required_independent_reviewers"] = 1
+            packet_unsigned = {
+                key: value for key, value in packet.items() if key != "packet_sha256"
+            }
+            packet["packet_sha256"] = hashlib.sha256(
+                json.dumps(
+                    packet_unsigned,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
+            packet_path.write_text(
+                json.dumps(packet, ensure_ascii=False, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            assignments["candidate_packets_sha256"] = file_sha256(packet_path)
+            assignments["assignments"][0]["packet_sha256"] = packet["packet_sha256"]
+            (root / "data/pilot/reviewer_assignments.json").write_text(
+                json.dumps(assignments), encoding="utf-8"
+            )
+            review["packet_sha256"] = packet["packet_sha256"]
+            (root / "data/pilot/reviews.jsonl").write_text(
+                json.dumps(review) + "\n", encoding="utf-8"
+            )
+            tampered = ReviewLedgerValidator(root).validate()
+            self.assertIn(
+                "PACKET_REVIEWER_REQUIREMENT_INVALID",
+                {issue.code for issue in tampered.issues},
+            )
 
 
 class EvidenceAndInferenceTests(unittest.TestCase):
