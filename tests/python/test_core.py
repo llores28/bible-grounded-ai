@@ -67,6 +67,7 @@ from biblical_moral_ai.schemas import (  # noqa: E402
     PipelineDecision,
     ReviewStatus,
 )
+from biblical_moral_ai.source_import import _write_canonical  # noqa: E402
 from biblical_moral_ai.training import (  # noqa: E402
     TrainingBlockedError,
     _inspect_unreviewed_research_inputs,
@@ -956,6 +957,15 @@ class DatasetTests(unittest.TestCase):
 
 
 class EvidenceAndInferenceTests(unittest.TestCase):
+    def test_canonical_artifact_newline_is_platform_independent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            artifact = Path(directory) / "artifact.json"
+            digest = _write_canonical(artifact, {"text": "truth", "version": 1})
+            expected = b'{"text":"truth","version":1}\r\n'
+
+            self.assertEqual(artifact.read_bytes(), expected)
+            self.assertEqual(digest, hashlib.sha256(expected).hexdigest())
+
     @staticmethod
     def add_test_source(store: EvidenceStore, *, organizational: bool = False) -> None:
         source_id = "ORG_TEST" if organizational else "KJV_TEST"

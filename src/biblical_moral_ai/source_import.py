@@ -474,11 +474,18 @@ def _sort_and_validate(
 
 def _write_canonical(path: Path, payload: dict[str, Any]) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
-    serialized = json.dumps(
-        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ) + "\n"
+    # The approved artifact digests were established with CRLF line endings.
+    # Write bytes explicitly so Linux training hosts and Windows review hosts
+    # produce the same canonical artifact instead of inheriting platform text
+    # newline translation.
+    serialized = (
+        json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        + "\r\n"
+    ).encode("utf-8")
     with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", dir=path.parent, delete=False
+        mode="wb", dir=path.parent, delete=False
     ) as handle:
         handle.write(serialized)
         temporary = Path(handle.name)
